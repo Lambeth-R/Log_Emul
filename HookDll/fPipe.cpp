@@ -12,20 +12,22 @@ fPipe::fPipe()
 fPipe::~fPipe()
 {
 }
-//Msg create problem
+
 void fPipe::create_msg(char* text, int length)
 {
 	std::lock_guard<std::mutex> guard(lock);
+	char hexString[5] = { '0' };
+	char mbuf[10] = { '0' };
 	do
 	{
 		std::string single_msg;		
 		single_msg.append("22");
 		single_msg.append("log");
 		int div = length > SINGLE_MSG_SIZE ? SINGLE_MSG_SIZE - single_msg.length() - 6 : length;
-		char hexString[4] = { '0' };
-		_itoa(div, &hexString[1], 16);
-		char mbuf[1024] = { 0 };
-		sprintf(mbuf, ">%s<", hexString);
+		memset(hexString, '0', sizeof(char) * 4);
+		_itoa(div, hexString, 16);
+		memset(mbuf, '0', sizeof(char) * 10);
+		sprintf(mbuf, ">0%s<", hexString);
 		single_msg.append(mbuf,6);
 		single_msg.append(text, div);
 		memset(text, 0, sizeof(char) * div);

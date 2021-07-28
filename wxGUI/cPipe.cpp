@@ -102,7 +102,7 @@ bool Log_parse(char* buffer, int readed, int* size)
 			 if (std::string(&buffer[11]).find("end@#$?") == 0)
 				 end_sequence = true;
 			 else
-				 message.append(&buffer[11]);
+				 message.append(std::string(&buffer[11], m_size));
 		 } while (!end_sequence);
 		 recieved_messages->push_back({ (DWORD)recieved_messages->size(), false, message});
 	 }
