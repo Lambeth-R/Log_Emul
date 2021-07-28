@@ -26,7 +26,7 @@ int WINAPI HookThread(HMODULE hModule)
 	pipe = &pp;
 	std::future<void> at = std::async(std::launch::async, &fPipe::threader, &pp);
 	async_thread_1 = &at;
-
+	//Old code
 	/*
 	pipe_command = CreateNamedPipe(TEXT("\\\\.\\pipe\\lmbtpipe"),
 		PIPE_ACCESS_DUPLEX,
@@ -104,10 +104,6 @@ BOOL WINAPI DllMain(HMODULE hModule,
 	case DLL_PROCESS_ATTACH:
 	{
 		CreateThread(0, 0, (LPTHREAD_START_ROUTINE)HookThread, hModule, 0, 0);
-		//DetourTransactionBegin();
-		//DetourUpdateThread(GetCurrentThread());
-		//DetourAttach(&(PVOID&)True_CreateFileW, LMBT_CreateFileW);
-		//DetourTransactionCommit();
 		break;
 	}
 	case DLL_THREAD_ATTACH:

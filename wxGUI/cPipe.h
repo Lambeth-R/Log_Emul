@@ -18,7 +18,7 @@ enum COMMANDS {
 	Cloggin = 10,
 	Cemul
 };
-
+//to do shit naming
 class cPipe
 {
 public:
@@ -29,7 +29,7 @@ public:
 	static cPipe* GetInstance();
 	cPipe(cPipe& other) = delete;
 	void operator=(const cPipe&) = delete;
-	std::list<msg>* prog_log; // Лог подключения
+	std::list<msg>* prog_log; // Connect log 
 	std::list<msg>* recieved_messages;
 private:
 	std::future<void>* log_thread = nullptr;

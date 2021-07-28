@@ -12,7 +12,7 @@ fPipe::fPipe()
 fPipe::~fPipe()
 {
 }
-//Проблема с передачей данных
+//Msg create problem
 void fPipe::create_msg(char* text, int length)
 {
 	std::lock_guard<std::mutex> guard(lock);
@@ -48,7 +48,7 @@ void fPipe::threader()
 	int* exit_code;
 	std::future<void>* mThread;
 	while (1) {
-		//Оптимизация компилятора сосет жепу, но иначе я не вижу код
+		//Compiler suck, so no optimisation
 		exit_code = new int(-1);
 		mThread = new std::future<void>(std::async(std::launch::async, &fPipe::pipe_commander, this, exit_code));
 		athreads.push_back(thread_exit{ *exit_code, mThread});
@@ -129,7 +129,7 @@ void fPipe::pipe_commander(int* exit_code)
 		NULL);
 	last_err = GetLastError();
 	while (*exit_code < 0) {
-		//ConnectNamedPipe(pipe_cmd, NULL); //Не работает нихуя
+		//ConnectNamedPipe(pipe_cmd, NULL); //Make no sense
 		while (True_ReadFile(pipe_cmd, buffer, 100, &dwRead, NULL) != TRUE);
 		if (buffer[0] != '2' && buffer[1] != '2') continue;
 		if (buffer[2] != 'c'&& buffer[3] != 'm'&& buffer[4] != 'd') continue;
@@ -147,11 +147,10 @@ void fPipe::pipe_commander(int* exit_code)
 			DetourUpdateThread(GetCurrentThread());
 			DWORD err = DetourAttach((PVOID*)&True_ReadFile, &Fake_ReadFile);
 			DetourTransactionCommit();
-			//Detour shit
 		}
 		if (readed_msg.find("22") == 0 && readed_msg.find("cmd") == 2 && strcmp(&readed_msg.c_str()[11], "eml") == 0) {
 			action = Cemul;
-			//Detour shit
+			//Detour here
 		}
 	}
 }

@@ -5,7 +5,7 @@ wxIMPLEMENT_APP(MyGUI);
 
 MyGUI::MyGUI() 
 {
-	setlocale(LC_ALL, "Russian");
+	//setlocale(LC_ALL, "Russian");
 }
 
 MyGUI::~MyGUI()

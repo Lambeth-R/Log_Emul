@@ -83,9 +83,7 @@ void cMain::Inject(wxCommandEvent& evt)
 		wxString err;
 		err.Printf("Cannot inject executable error: %d", errID);
 		wxMessageBox(err, "Result", wxOK);
-	}
-	//pipe = new cPipe();
-	
+	}	
 	m_msg_sync = new std::future<void>(std::async(std::launch::async, &cMain::MsgSync, this));
 	return;
 }
@@ -97,7 +95,6 @@ void cMain::SetSelected(Process* p)
 	m_pselected->name = p->name;
 	m_pselected->path = p->path;
 	m_pselected->pid = p->pid;
-	//memcpy(m_pselected, p, sizeof(p));
     m_Sel_file->Clear();
     wxString res;
     res.Printf("Pid: %d\t Name: %s", m_pselected->pid, m_pselected->name);
@@ -150,7 +147,7 @@ void cMain::Emulate_mode(wxCommandEvent& evt)
 
 void cMList::OnSelected(wxListEvent& event)
 {
-	//создать новое окно.
+	//Create new window.
 	//wxListItem info;
 	//info.m_itemId = event.m_itemIndex;
 	//info.m_col = 1;
