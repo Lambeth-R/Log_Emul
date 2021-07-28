@@ -12,7 +12,7 @@ fPipe::fPipe()
 fPipe::~fPipe()
 {
 }
-//Ем говно
+//Проблема с передачей данных
 void fPipe::create_msg(char* text, int length)
 {
 	std::lock_guard<std::mutex> guard(lock);
