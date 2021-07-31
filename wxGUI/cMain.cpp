@@ -2,6 +2,7 @@
 #include "cMain.h"
 #include "cProcesses.h"
 #include "fProcess.h"
+#include "fLData.h"
 
 wxBEGIN_EVENT_TABLE(cMain, wxFrame)
     EVT_BUTTON(FOPENID, cMain::SelectProcess)
@@ -84,7 +85,8 @@ void cMain::Inject(wxCommandEvent& evt)
 		err.Printf("Cannot inject executable error: %d", errID);
 		wxMessageBox(err, "Result", wxOK);
 	}	
-	m_msg_sync = new std::future<void>(std::async(std::launch::async, &cMain::MsgSync, this));
+	if (m_msg_sync == nullptr)
+		m_msg_sync = new std::future<void>(std::async(std::launch::async, &cMain::MsgSync, this));
 	return;
 }
 
@@ -147,18 +149,7 @@ void cMain::Emulate_mode(wxCommandEvent& evt)
 
 void cMList::OnSelected(wxListEvent& event)
 {
-	//Create new window.
-	//wxListItem info;
-	//info.m_itemId = event.m_itemIndex;
-	//info.m_col = 1;
-	//info.m_mask = wxLIST_MASK_TEXT;
-	//if (GetItem(info))
-	//{
-	//	wxLogMessage("Value of the 2nd field of the selected item: %s",
-	//		info.m_text);
-	//}
-	//else
-	//{
-	//	wxFAIL_MSG("wxListCtrl::GetItem() failed");
-	//}
+	fLData* linfo = new fLData(this, event.GetItem().m_itemId);
+	linfo->Show();
+
 }

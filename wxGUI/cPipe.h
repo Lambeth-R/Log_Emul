@@ -37,7 +37,7 @@ private:
 	int thread_close;
 	COMMANDS action;
 	HANDLE pipe_log;
-	HANDLE pipe_cmd;
+	HANDLE pipe_cmd = nullptr;
 	HANDLE pipe_emul;
 protected:
 	static cPipe* cpipe;

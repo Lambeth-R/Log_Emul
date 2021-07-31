@@ -21,16 +21,18 @@
 {
 	 char buffer[1024];
 	 DWORD dwRead;
-	 while (!pipe_cmd || pipe_cmd == INVALID_HANDLE_VALUE) {
-		 pipe_cmd = CreateFile(TEXT("\\\\.\\pipe\\cmd_pipe"),
-			 GENERIC_READ | GENERIC_WRITE,
-			 FILE_SHARE_READ, NULL,
-			 OPEN_EXISTING,
-			 FILE_ATTRIBUTE_NORMAL, NULL);
+	 if (pipe_cmd == nullptr) {
+		 while (!pipe_cmd || pipe_cmd == INVALID_HANDLE_VALUE) {
+			 pipe_cmd = CreateFile(TEXT("\\\\.\\pipe\\cmd_pipe"),
+				 GENERIC_READ | GENERIC_WRITE,
+				 FILE_SHARE_READ, NULL,
+				 OPEN_EXISTING,
+				 FILE_ATTRIBUTE_NORMAL, NULL);
+		 }		 
+		 sprintf(buffer, "Pipe %X control connected!!!\0", pipe_cmd);
+		 prog_log->push_back({ (DWORD)prog_log->size(), false, buffer });		 
 	 }
 	 DWORD err = 0;
-	 sprintf(buffer, "Pipe %X control connected!!!\0", pipe_cmd);
-	 prog_log->push_back({(DWORD) prog_log->size(), false, buffer});
 	 std::string message;
 	 switch (action) {
 		 case Cnone: {

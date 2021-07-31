@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="fLData.h" />
     <ClInclude Include="cMain.h" />
     <ClInclude Include="cPipe.h" />
     <ClInclude Include="cProcesses.h" />
@@ -28,6 +29,7 @@
     <ClInclude Include="sysfunk.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="fLData.cpp" />
     <ClCompile Include="cMain.cpp" />
     <ClCompile Include="cPipe.cpp" />
     <ClCompile Include="cProcesses.cpp" />
