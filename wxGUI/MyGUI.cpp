@@ -14,7 +14,7 @@ MyGUI::~MyGUI()
 
 bool MyGUI::OnInit()
 {
-	m_frame1 = new cMain();
+	m_frame1 = cMain::GetInstance();
 	m_frame1->Show();
 	return true;
 }

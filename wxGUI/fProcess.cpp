@@ -13,9 +13,9 @@ wxBEGIN_EVENT_TABLE(fProcess, wxFrame)
 wxEND_EVENT_TABLE()
 
 
-fProcess::fProcess(wxWindow* Parent, cProcesses* cP) : wxFrame(Parent, wxID_ANY, "Select Process", { (Parent->GetPosition().x  + mwind_size.x / 4), (Parent->GetPosition().y - 50) }, pwind_size)
+fProcess::fProcess(wxWindow* Parent) : wxFrame(Parent, wxID_ANY, "Select Process", { (Parent->GetPosition().x  + mwind_size.x / 4), (Parent->GetPosition().y - 50) }, pwind_size)
 {
-	m_list_ctrl = new MyListCtrl(this, cP);
+	m_list_ctrl = new MyListCtrl(this);
 	m_Sel_btn = new wxButton(this, PSELECTOR, "Select");
 	m_sizer = new wxBoxSizer(wxVERTICAL);
 	m_tsearch = new wxTextCtrl(this, PSEARCH);
@@ -34,7 +34,7 @@ void fProcess::OnSearch(wxCommandEvent& evt)
 void fProcess::OnButtonClick(wxCommandEvent& evt)
 {
 	cMain* myParent = reinterpret_cast<cMain*>(this->GetParent());
-	myParent->SetSelected(m_list_ctrl->getSelected());
+	myParent->SetSelected(m_list_ctrl->GetSelected());
 	this->Close();
 }
 
@@ -45,7 +45,7 @@ fProcess::~fProcess()
 	m_sizer->Clear();
 }
 
-Process* MyListCtrl::getSelected()
+Process* MyListCtrl::GetSelected()
 {
 	return &m_selected;
 }
@@ -53,7 +53,7 @@ Process* MyListCtrl::getSelected()
 void MyListCtrl::OnSearch(wxString str)
 {
 	Hide();
-	m_cP->refresh_list();
+	m_cP->Refresh();
 	int deleted = 0;
 	int base_size = m_cP->process.size();
 	while (deleted != base_size) {
@@ -126,21 +126,20 @@ void MyListCtrl::OnFocused(wxListEvent& event)
 	std::advance(pIter, t);
 	m_selected = { pIter->pid, pIter->name, pIter->path};
 	return;
-	//selected = {  }
 }
 
-MyListCtrl::MyListCtrl(wxWindow* Parent, cProcesses* cP) : wxListCtrl(Parent, LIST_CTRL, { 5,2 }, { pwind_size.x - 25 , (int)7 * (pwind_size.y / 9) }, wxLC_REPORT | wxBORDER_THEME | wxLC_EDIT_LABELS)
+MyListCtrl::MyListCtrl(wxWindow* Parent) : wxListCtrl(Parent, LIST_CTRL, { 5,2 }, { pwind_size.x - 25 , (int)7 * (pwind_size.y / 9) }, wxLC_REPORT | wxBORDER_THEME | wxLC_EDIT_LABELS)
 {
 	Hide();
 	m_sorted = new Sorted();
 	InsertColumn(0, "Pid");
 	InsertColumn(1, "Name");
-	this->m_cP = cP;
+	this->m_cP = cProcesses::GetInstance();
 	SetColumnWidth(0, 50);
 	SetColumnWidth(1, 200);
 	m_item_count = new int();
 	*m_item_count = -1;
-	for (auto c : cP->process) {
+	for (auto c : m_cP->process) {
 		(*m_item_count)++;
 		if (c.name.IsSameAs("<unknown>")) continue;
 		wxString buf;
@@ -155,6 +154,5 @@ MyListCtrl::MyListCtrl(wxWindow* Parent, cProcesses* cP) : wxListCtrl(Parent, LI
 MyListCtrl::~MyListCtrl() 
 {
 	delete (m_sorted);
-	delete (m_cP);
 	delete (m_item_count);
 }

@@ -4,21 +4,23 @@
 
 #include <string>
 #include <Windows.h>
+
+// Base Func class
 class sysfunk
 {
 public:
 	std::string* base_string = nullptr;
-	bool correct_inited = false;
+	bool CorrectInited = false;
 };
 
-
+// ReadFile info class
 class cReadFile : public sysfunk
 {
 public:
 	cReadFile(std::string bs);
 	~cReadFile();
 private:
-	bool parse();
+	bool Parse();
 	std::string hFile;
 	std::string lpBuffer;
 	DWORD nNumberOfBytesToRead = 0;

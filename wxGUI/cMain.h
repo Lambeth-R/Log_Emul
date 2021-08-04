@@ -5,7 +5,6 @@
 #include <future>
 #include <windows.h>
 
-
 #include "wx/display.h"
 #include "wx/dirdlg.h"
 #include "wx/event.h"
@@ -13,8 +12,8 @@
 #include "wx/wx.h"
 
 #include "contsts.h"
-#include "cProcesses.h"
 #include "cPipe.h"
+#include "cProcesses.h"
 #include "sysfunk.h"
 
 class cMList : public wxListCtrl
@@ -40,16 +39,33 @@ private:
 class cMain : public wxFrame
 {
 public:
-	cMain();
-	~cMain();
+	// Process Selection window
 	void SelectProcess(wxCommandEvent& evt);
+	// Set selected proc parameters to wxListBox
 	void SetSelected(Process* p);	
+	// Inject outside class for emulate purposes
+	void InjectOutside();
+	// Get info of selected process for emulate purposes
+	Process GetProcess();
+	// Singletone
+	static cMain* GetInstance();
+	cMain(cMain& other) = delete;
+	void operator=(const cMain&) = delete;
+
 private:
+	// wxListBox -es synchronization func
 	void MsgSync();
-	void Inject(wxCommandEvent& evt);
-	void Listen_mode(wxCommandEvent& evt);
-	void Emulate_mode(wxCommandEvent& evt);
-	void OnListSelected(wxCommandEvent& evt);
+	// Inject exe, (warp acually, never use Inject itself)
+	void InjectWithin(wxCommandEvent& evt);
+	// Inject code
+	void Inject();
+	// Button Listen routine
+	void ListenMode(wxCommandEvent& evt);
+	// Button Emulate routine
+	void EmulateMode(wxCommandEvent& evt);
+	// Selected exe inject flag
+	bool injected = false;
+	// Gui handles
 	wxButton* m_btn_Inj = nullptr;
 	wxButton* m_btn_sel_file = nullptr;
 	wxListBox* m_Sel_file = nullptr;
@@ -61,10 +77,17 @@ private:
 	wxBoxSizer* m_sizer = nullptr;
 	wxButton* m_log_btn = nullptr;
 	wxButton* m_eml_btn = nullptr;
-	std::future<void>* m_msg_sync = nullptr;	
-	std::list<sysfunk> funks_data;
+	// MsgSync async handle
+	std::future<void>* m_msg_sync = nullptr;
+	//std::list<sysfunk> funks_data;
+	// MsgSync exit code
 	int sync_exit_code;
 	wxDECLARE_EVENT_TABLE();
+protected:
+	// Singletone
+	static cMain* cmain;
+	cMain();
+	~cMain();
 };
 
 

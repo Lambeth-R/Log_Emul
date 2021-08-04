@@ -4,17 +4,39 @@
 #include "fProcess.h"
 #include "fLData.h"
 
+
 wxBEGIN_EVENT_TABLE(cMain, wxFrame)
     EVT_BUTTON(FOPENID, cMain::SelectProcess)
-	EVT_BUTTON(INJECTID, cMain::Inject)
-	EVT_BUTTON(LISTEN, cMain::Listen_mode)
-	EVT_BUTTON(EMULATE, cMain::Emulate_mode)
+	EVT_BUTTON(INJECTID, cMain::InjectWithin)
+	EVT_BUTTON(LISTEN, cMain::ListenMode)
+	EVT_BUTTON(EMULATE, cMain::EmulateMode)
 wxEND_EVENT_TABLE()
 
 wxBEGIN_EVENT_TABLE(cMList, wxListCtrl)
 	EVT_LIST_ITEM_SELECTED(MSG_LIST, cMList::OnSelected)
 wxEND_EVENT_TABLE()
 
+void cMain::SelectProcess(wxCommandEvent& evt)
+{
+	cProcesses* c = cProcesses::GetInstance();
+	fProcess* fpFrame = new fProcess(this);
+	fpFrame->Show(true);
+}
+
+void cMain::SetSelected(Process* p)
+{
+	if (!m_pselected)
+		m_pselected = new Process();
+	m_pselected->name = p->name;
+	m_pselected->path = p->path;
+	m_pselected->pid = p->pid;
+	m_Sel_file->Clear();
+	wxString res;
+	res.Printf("Pid: %d\t Name: %s", m_pselected->pid, m_pselected->name);
+	m_Sel_file->Insert(res, 0);
+	m_Sel_file->Refresh();
+	injected = false;
+}
 
 cMain::cMain() : wxFrame(nullptr, wxID_ANY, tMain_wind.c_str(), wxPoint((wxDisplay().GetGeometry().GetWidth() - mwind_size.x ) / 2, (wxDisplay().GetGeometry().GetHeight() - mwind_size.x) / 2), wxSize(mwind_size.x,mwind_size.y))
 {
@@ -36,25 +58,71 @@ cMain::cMain() : wxFrame(nullptr, wxID_ANY, tMain_wind.c_str(), wxPoint((wxDispl
 	//m_sizer->Add(m_btn_Inj, wxSizerFlags(5).Expand().Border());
 }
 
-
 cMain::~cMain()
 {    
+	sync_exit_code = 0;
 	delete (m_btn_Inj);
 	delete (m_btn_sel_file);
 	delete (m_Sel_file);
     if(m_Inj_dial) delete (m_Inj_dial);
 	delete (m_empty);
-	sync_exit_code = 0;
 }
 
-void cMain::SelectProcess(wxCommandEvent& evt)
+void cMain::MsgSync()
 {
-    cProcesses *c = new cProcesses();
-    fProcess* fpFrame = new fProcess(this, c);
-    fpFrame->Show(true);
+	cPipe* pipe = cPipe::GetInstance();
+	while (sync_exit_code < 0)
+	{
+		Sleep(100);
+		if (pipe->SetLock()) {
+			for (auto i = pipe->LogMessages->begin(); i != pipe->LogMessages->end(); i++)
+			{
+				if (!i._Ptr->_Myval.displayed) {
+					m_log_msgs->Insert(i._Ptr->_Myval.message, i._Ptr->_Myval.order);
+					i._Ptr->_Myval.displayed = true;
+					m_log_msgs->Refresh();
+				}
+			}
+			for (auto i = pipe->ListenedMessages->begin(); i != pipe->ListenedMessages->end(); i++)
+			{
+				if (!i._Ptr->_Myval.displayed) {
+					m_recieved_msgs->InsertItem(i._Ptr->_Myval.order, i._Ptr->_Myval.message);
+					i._Ptr->_Myval.displayed = true;
+					m_recieved_msgs->Refresh();
+				}
+			}
+			pipe->UnLock();
+		}
+
+	}
 }
 
-void cMain::Inject(wxCommandEvent& evt)
+void cMain::InjectOutside()
+{
+	if (injected) {
+		wxMessageBox("Process already injected", "Error", wxOK);
+		return;
+	}
+	Inject();
+}
+
+Process cMain::GetProcess()
+{
+	return *m_pselected;
+}
+
+void cMain::InjectWithin(wxCommandEvent& evt)
+{
+	if (injected) {
+		wxMessageBox("Process already injected", "Error", wxOK);
+		return;
+	}
+	Inject();
+	if (m_msg_sync == nullptr)
+		m_msg_sync = new std::future<void>(std::async(std::launch::async, &cMain::MsgSync, this));
+}
+
+void cMain::Inject()
 {
 	DWORD dwMemSize;
 	HANDLE hProcess;
@@ -69,13 +137,18 @@ void cMain::Inject(wxCommandEvent& evt)
 		lpRemoteMemory = VirtualAllocEx(hProcess, NULL, dwMemSize, MEM_COMMIT, PAGE_READWRITE);
 		if (lpRemoteMemory != 0) {
 			WriteProcessMemory(hProcess, lpRemoteMemory, (LPCVOID)szPath, dwMemSize, NULL);
-			lpLoadLibrary = GetProcAddress(GetModuleHandleA("Kernel32.dll"), "LoadLibraryA");
+			//Shit warning wanna get it off
+			HMODULE kerHandle = GetModuleHandleA("Kernel32.dll");
+			if (!kerHandle)
+				return;
+			lpLoadLibrary = GetProcAddress(kerHandle, "LoadLibraryA");
 			if (CreateRemoteThread(hProcess, NULL, NULL, (LPTHREAD_START_ROUTINE)lpLoadLibrary, lpRemoteMemory, NULL, NULL))
 			{
 				Sleep(10);
 				VirtualFreeEx(hProcess, (LPVOID)lpRemoteMemory, 0, MEM_RELEASE);
 				CloseHandle(hProcess);
 				wxMessageBox("Injection was successful", "Result", wxOK);
+				injected = true;
 			}
 		}
 	}
@@ -83,73 +156,45 @@ void cMain::Inject(wxCommandEvent& evt)
 		DWORD errID = GetLastError();
 		wxString err;
 		err.Printf("Cannot inject executable error: %d", errID);
-		wxMessageBox(err, "Result", wxOK);
+		wxMessageBox(err, "Result", wxOK);		
 	}	
-	if (m_msg_sync == nullptr)
-		m_msg_sync = new std::future<void>(std::async(std::launch::async, &cMain::MsgSync, this));
-	return;
 }
 
-void cMain::SetSelected(Process* p)
+void cMain::ListenMode(wxCommandEvent& evt)
 {
-	if (!m_pselected)
-		m_pselected = new Process();
-	m_pselected->name = p->name;
-	m_pselected->path = p->path;
-	m_pselected->pid = p->pid;
-    m_Sel_file->Clear();
-    wxString res;
-    res.Printf("Pid: %d\t Name: %s", m_pselected->pid, m_pselected->name);
-    m_Sel_file->Insert(res,0);
-    m_Sel_file->Refresh();
-}
-
-void cMain::MsgSync()
-{
-	cPipe* pipe = cPipe::GetInstance();
-	while (sync_exit_code < 0)
-	{
-		Sleep(100);
-		for (auto i = pipe->prog_log->begin(); i != pipe->prog_log->end(); i++)
-		{
-			if (!i._Ptr->_Myval.displayed) {
-				m_log_msgs->Insert(i._Ptr->_Myval.message, i._Ptr->_Myval.order);
-				i._Ptr->_Myval.displayed = true;
-				m_log_msgs->Refresh();
-			}
-		}
-		for (auto i = pipe->recieved_messages->begin(); i != pipe->recieved_messages->end(); i++)
-		{
-			if (!i._Ptr->_Myval.displayed) {
-				m_recieved_msgs->InsertItem(i._Ptr->_Myval.order, i._Ptr->_Myval.message);
-				i._Ptr->_Myval.displayed = true;
-				m_recieved_msgs->Refresh();
-			}
-		}
-	}
-}
-
-void cMain::Listen_mode(wxCommandEvent& evt)
-{
+	if (!injected)
+		return;
 	cPipe* pipe = cPipe::GetInstance();
 	if (m_pselected == NULL)
 		return;
-	pipe->clear_log();
-	pipe->set_action(Cloggin);
+	pipe->ClearLog();
+	pipe->SetAction(COMMANDS::Cloggin);
 }
 
-void cMain::Emulate_mode(wxCommandEvent& evt)
+void cMain::EmulateMode(wxCommandEvent& evt)
 {
+	if (!injected)
+		return;
 	cPipe* pipe = cPipe::GetInstance();
 	if (m_pselected == NULL)
 		return;
-	pipe->clear_log();
-	pipe->set_action(Cemul);
+	pipe->ClearLog();
+	pipe->SetAction(COMMANDS::Cemul);
+	pipe->Emulate();
 }
 
 void cMList::OnSelected(wxListEvent& event)
 {
 	fLData* linfo = new fLData(this, event.GetItem().m_itemId);
 	linfo->Show();
-
 }
+
+cMain* cMain::GetInstance()
+{
+	if (cmain == nullptr) {
+		cmain = new cMain;
+	}
+	return cmain;
+}
+
+cMain* cMain::cmain = nullptr;

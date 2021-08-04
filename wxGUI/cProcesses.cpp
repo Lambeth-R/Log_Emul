@@ -4,15 +4,15 @@
 
 cProcesses::cProcesses()
 {
-    this->Init_list();
+    this->Init();
 }
 
-void cProcesses::Init_list() 
+void cProcesses::Init() 
 {
     DWORD aProcesses[1024], cbNeeded;
     EnumProcesses(aProcesses, sizeof(aProcesses), &cbNeeded);
-    cProc = cbNeeded / sizeof(DWORD);
-    for (int i = 0; i < cProc; i++)
+    ProcCount = cbNeeded / sizeof(DWORD);
+    for (int i = 0; i < ProcCount; i++)
     {
         if (aProcesses[i] != -1)
         {
@@ -34,17 +34,29 @@ void cProcesses::Init_list()
         }
     }
 }
-void cProcesses::del_list() {
+
+void cProcesses::Clear() {
     while (!process.empty()) {
         process.pop_back();
     }
 }
-void cProcesses::refresh_list() {
-    this->del_list();
-    this->Init_list();
+
+void cProcesses::Refresh() {
+    this->Clear();
+    this->Init();
 }
 
 cProcesses::~cProcesses()
 {
-    this->del_list();
+    this->Clear();
 }
+
+cProcesses* cProcesses::GetInstance()
+{
+    if (cprocesses == nullptr) {
+        cprocesses = new cProcesses;
+    }
+    return cprocesses;
+}
+
+cProcesses* cProcesses::cprocesses = nullptr;

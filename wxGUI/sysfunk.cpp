@@ -3,9 +3,8 @@
 cReadFile::cReadFile(std::string bs)
 {
 	this->base_string = new std::string(bs);
-	if (parse())
-		correct_inited = true;
-
+	if (Parse())
+		CorrectInited = true;
 }
 
 cReadFile::~cReadFile()
@@ -21,10 +20,9 @@ int str_to_int(std::string val)
 		result *= 10;
 	}
 	return result / 10;
-
 }
 
-bool cReadFile::parse()
+bool cReadFile::Parse()
 {
 	int position = 0;	
 	if (base_string->find("ReadFile") != 0 || base_string->back() != ')')

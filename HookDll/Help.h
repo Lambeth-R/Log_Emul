@@ -3,11 +3,11 @@
 #define _HELP_H_
 
 #include <future>
-#include "fPipe.h"
+#include "dllcPipe.h"
 
 extern std::future<void> async_thread_1;
 
-extern fPipe *pipe;
+extern dllcPipe *pipe;
 #define SINGLE_MSG_SIZE 1024
 
 #endif 

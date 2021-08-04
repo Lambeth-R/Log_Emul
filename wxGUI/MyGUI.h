@@ -4,7 +4,7 @@
 
 #include "wx\wx.h"
 #include "cMain.h"
-
+// Main class
 class MyGUI : public wxApp
 {
 public:

@@ -5,7 +5,7 @@
 #include <Windows.h>
 
 
-__declspec(dllexport) BOOL WINAPI Fake_ReadFile(
+__declspec(dllexport) BOOL WINAPI Custom_ReadFile(
 	HANDLE       hFile,
 	LPVOID       lpBuffer,
 	DWORD        nNumberOfBytesToRead,

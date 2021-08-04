@@ -10,20 +10,28 @@
 class MyListCtrl : public wxListCtrl
 {
 public:
-	MyListCtrl(wxWindow* Parent, cProcesses* cP);
+	MyListCtrl(wxWindow* Parent);
 	~MyListCtrl(); 
+	// Colunm click routine (for sort purposes)
 	void OnColClick(wxListEvent& event);
+	// Process selection routine
 	void OnFocused(wxListEvent& event);
-	Process* getSelected();
+	// For transfer process info
+	Process* GetSelected();
+	// Sort routine
 	void Sort_by(int col);
+	// Search Routine
 	void OnSearch(wxString str);
 	wxDECLARE_NO_COPY_CLASS(MyListCtrl);
 	wxDECLARE_EVENT_TABLE();
+	// Selected proc
 	Process m_selected;
-
 private:
+	// List showed item (for search routine)
 	int* m_item_count;
+	// All processes data
 	cProcesses* m_cP;
+	// First or second column sort data
 	struct Sorted {
 		bool _st = false;
 		bool _nd = false;
@@ -34,12 +42,15 @@ private:
 class fProcess : public wxFrame
 {
 public:
-	fProcess(wxWindow* Parent, cProcesses* cP);
+	fProcess(wxWindow* Parent);
 	~fProcess();
+	// Select button routine
 	void OnButtonClick(wxCommandEvent& evt);
+	// Search box routine
 	void OnSearch(wxCommandEvent& evt);
 	
 private:
+	// Gui handles
 	wxWindow* m_empty = nullptr;
 	wxButton* m_Sel_btn = nullptr;
 	MyListCtrl* m_list_ctrl = nullptr;
@@ -51,7 +62,7 @@ public:
 };
 
 
-
+// Windows id`s enum
 enum {	LIST_CTRL = 1000,
 		PSELECTOR,
 		PSEARCH

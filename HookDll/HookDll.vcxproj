@@ -181,11 +181,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="fPipe.cpp" />
+    <ClCompile Include="dllcPipe.cpp" />
     <ClCompile Include="myAPI.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="fPipe.h" />
+    <ClInclude Include="dllcPipe.h" />
     <ClInclude Include="Help.h" />
     <ClInclude Include="myAPI.h" />
   </ItemGroup>
