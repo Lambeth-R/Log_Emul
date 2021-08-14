@@ -39,8 +39,6 @@ void dllcPipe::Create_Message(char* text, long long length)
 	
 }
 
-
-
 void dllcPipe::Send_Message()
 {
 
@@ -79,14 +77,17 @@ void dllcPipe::threader()
 			
 	}
 }
+
 void dllcPipe::SetAction(COMMANDS a)
 {
 	action = a;
 }
+
 COMMANDS dllcPipe::GetAction()
 {
 	return action;
 }
+
 void dllcPipe::ToLogPipe()
 {
 	DWORD dwWritten;
@@ -160,6 +161,7 @@ void dllcPipe::hPipeCommander(int* exit_code)
 		}
 	}
 }
+
 void dllcPipe::hPipeEmulater(int* exit_code)
 {
 	DWORD dwWritten, dwRead;

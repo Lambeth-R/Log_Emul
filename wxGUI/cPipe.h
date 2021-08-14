@@ -6,13 +6,10 @@
 #include <string>
 #include <Windows.h>
 
+#include "common.h"
+
 // Single recieved message
-struct msg {
-	DWORD order;
-	bool displayed;
-	bool checkbox; // For emulate purposes (select if need to emulate)
-	std::string message;
-};
+
 // Enumerate of command types
 enum class COMMANDS {
 	Cnone = 0,

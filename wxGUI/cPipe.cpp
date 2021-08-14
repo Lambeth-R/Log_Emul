@@ -3,8 +3,6 @@
 #include "cMain.h"
 #include "contsts.h"
 
-//Сломался пайп отладить
-
  cPipe::cPipe()
  {
 	 LogMessages = new std::list<msg>();
@@ -101,7 +99,7 @@ bool Log_parse(char* buffer, int readed, int* size)
 	 return true;
 }
 
- void cPipe::ThreadLog()
+void cPipe::ThreadLog()
  {
 	 char buffer[1024];
 	 DWORD dwRead;

@@ -12,7 +12,6 @@ wxBEGIN_EVENT_TABLE(fProcess, wxFrame)
 	EVT_TEXT(PSEARCH, fProcess::OnSearch)
 wxEND_EVENT_TABLE()
 
-
 fProcess::fProcess(wxWindow* Parent) : wxFrame(Parent, wxID_ANY, "Select Process", { (Parent->GetPosition().x  + mwind_size.x / 4), (Parent->GetPosition().y - 50) }, pwind_size)
 {
 	m_list_ctrl = new MyListCtrl(this);

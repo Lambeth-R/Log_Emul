@@ -3,6 +3,7 @@
 #include "cProcesses.h"
 #include "fProcess.h"
 #include "fLData.h"
+#include "../common/Pipe.h"
 
 
 wxBEGIN_EVENT_TABLE(cMain, wxFrame)
@@ -19,6 +20,7 @@ wxEND_EVENT_TABLE()
 void cMain::SelectProcess(wxCommandEvent& evt)
 {
 	cProcesses* c = cProcesses::GetInstance();
+	c->Refresh();
 	fProcess* fpFrame = new fProcess(this);
 	fpFrame->Show(true);
 }
@@ -70,30 +72,69 @@ cMain::~cMain()
 
 void cMain::MsgSync()
 {
-	cPipe* pipe = cPipe::GetInstance();
+	Pipe* cPipe = Pipe::GetInstance(pipename[0], PIPE_CONNECT | PIPE_SEND);
+	Pipe* lPipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_RECIEVE);
+	Pipe* ePipe = Pipe::GetInstance(pipename[2], PIPE_CONNECT | PIPE_RECIEVE);
+	std::list<msg> messages[4];
+	std::list<msg> temp;
 	while (sync_exit_code < 0)
 	{
 		Sleep(100);
-		if (pipe->SetLock()) {
-			for (auto i = pipe->LogMessages->begin(); i != pipe->LogMessages->end(); i++)
-			{
-				if (!i._Ptr->_Myval.displayed) {
-					m_log_msgs->Insert(i._Ptr->_Myval.message, i._Ptr->_Myval.order);
-					i._Ptr->_Myval.displayed = true;
-					m_log_msgs->Refresh();
-				}
+		temp = cPipe->GetLogMessages();
+		if (temp.size() > messages[0].size())
+		{
+			auto it = temp.begin();
+			std::advance(it, messages[0].size());
+			while (it != temp.end()) {
+				messages[0].push_back(*it);
+				it++;
 			}
-			for (auto i = pipe->ListenedMessages->begin(); i != pipe->ListenedMessages->end(); i++)
-			{
-				if (!i._Ptr->_Myval.displayed) {
-					m_recieved_msgs->InsertItem(i._Ptr->_Myval.order, i._Ptr->_Myval.message);
-					i._Ptr->_Myval.displayed = true;
-					m_recieved_msgs->Refresh();
-				}
+		}
+		for (auto i = messages[0].begin(); i != messages[0].end(); i++)
+		{
+			if (!i._Ptr->_Myval.displayed) {
+				m_log_msgs->Insert(i._Ptr->_Myval.message, i._Ptr->_Myval.order);
+				i._Ptr->_Myval.displayed = true;
+				m_log_msgs->Refresh();
 			}
-			pipe->UnLock();
 		}
 
+		temp = lPipe->GetLogMessages();
+		if (temp.size() > messages[2].size())
+		{
+			auto it = temp.begin();
+			std::advance(it, messages[2].size());
+			while (it != temp.end()) {
+				messages[2].push_back(*it);
+				it++;
+			}
+		}
+		for (auto i = messages[2].begin(); i != messages[2].end(); i++)
+		{
+			if (!i._Ptr->_Myval.displayed) {
+				m_log_msgs->Insert(i._Ptr->_Myval.message, i._Ptr->_Myval.order);
+				i._Ptr->_Myval.displayed = true;
+				m_log_msgs->Refresh();
+			}
+		}
+		temp = lPipe->GetMessages();
+		if (temp.size() > messages[3].size())
+		{
+			auto it = temp.begin();
+			std::advance(it, messages[3].size());
+			while (it != temp.end()) {
+				messages[3].push_back(*it);
+				it++;
+			}
+		}
+		for (auto i = messages[3].begin(); i != messages[3].end(); i++)
+		{
+			if (!i._Ptr->_Myval.displayed) {
+				m_recieved_msgs->InsertItem(i._Ptr->_Myval.order, i._Ptr->_Myval.message);
+				i._Ptr->_Myval.displayed = true;
+				m_recieved_msgs->Refresh();
+			}
+		}
 	}
 }
 
@@ -164,23 +205,24 @@ void cMain::ListenMode(wxCommandEvent& evt)
 {
 	if (!injected)
 		return;
-	cPipe* pipe = cPipe::GetInstance();
 	if (m_pselected == NULL)
 		return;
-	pipe->ClearLog();
-	pipe->SetAction(COMMANDS::Cloggin);
+	Pipe* lPipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_RECIEVE);
+	Pipe* cPipe = Pipe::GetInstance(pipename[0], PIPE_CONNECT | PIPE_SEND);
+	cPipe->AddSingleMessage("22cmd>0003<log");
+	lPipe->ClearLog();
 }
 
 void cMain::EmulateMode(wxCommandEvent& evt)
 {
 	if (!injected)
 		return;
-	cPipe* pipe = cPipe::GetInstance();
 	if (m_pselected == NULL)
 		return;
-	pipe->ClearLog();
-	pipe->SetAction(COMMANDS::Cemul);
-	pipe->Emulate();
+	Pipe* ePipe = Pipe::GetInstance(pipename[2], PIPE_CONNECT | PIPE_RECIEVE);
+	Pipe* cPipe = Pipe::GetInstance(pipename[0], PIPE_CONNECT | PIPE_SEND);
+	cPipe->AddSingleMessage("22cmd>0003<eml");
+	ePipe->ClearLog();
 }
 
 void cMList::OnSelected(wxListEvent& event)

@@ -12,7 +12,6 @@
 #include "wx/wx.h"
 
 #include "contsts.h"
-#include "cPipe.h"
 #include "cProcesses.h"
 #include "sysfunk.h"
 

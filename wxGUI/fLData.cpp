@@ -1,6 +1,7 @@
 #include "fLData.h"
 #include "contsts.h"
-#include "cPipe.h"
+#include "../common/Pipe.h"
+#include "../common/common.h"
 
 fLData::fLData(wxWindow* Parent, long ord) : wxFrame(Parent, wxID_ANY, "Readed info", { (Parent->GetPosition().x + mwind_size.x / 4), (Parent->GetPosition().y - 50) }, pwind_size)
 {
@@ -8,11 +9,10 @@ fLData::fLData(wxWindow* Parent, long ord) : wxFrame(Parent, wxID_ANY, "Readed i
 		return;
 	readed_info = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize,
 		wxTE_READONLY | wxTE_MULTILINE | wxSUNKEN_BORDER);
-	cPipe* pipe = cPipe::GetInstance();
-	auto it = pipe->ListenedMessages->begin();
-	while ((*it).order != (DWORD)ord || it == pipe->ListenedMessages->end()) {
-		it++;
-	}
+	Pipe* pipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_SEND);
+	std::list<msg> messages = pipe->GetMessages();
+	auto it = messages.begin();
+	std::advance(it, ord);
 	mess = new std::string((*it).message);
 	length_count += 1000;
 	Add_Text();
