@@ -26,7 +26,7 @@ void SwitchContext(std::string message) {
 		Pipe* ePipe = Pipe::GetInstance(pipename[2], PIPE_CREATE | PIPE_RECIEVE);
 	}
 }
-
+// Main thread, that responce on cmd_pipe action
 int WINAPI HookThread(HMODULE hModule)
 {
 	DWORD dwWritten;

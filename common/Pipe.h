@@ -8,7 +8,7 @@
 #include "../common/common.h"
 
 #define SINGLE_MSG_SIZE 1024
-
+// Work Type enum
 enum tPipe {
 	PIPE_SEND = 1,
 	PIPE_RECIEVE = 2,
@@ -29,7 +29,7 @@ typedef BOOL(WINAPI *True_WriteFile)(
 	LPDWORD,
 	LPOVERLAPPED
 );
-
+// Mulititon impl
 template <typename Key, typename T> class Multiton
 {
 public:
@@ -74,8 +74,6 @@ private:
 
 template <typename Key, typename T> std::map<Key, T*> Multiton<Key, T>::instances;
 
-
-// TODO  constructor - name + type + get/send
 class Pipe : public Multiton<std::wstring, Pipe>
 {
 public:
@@ -84,6 +82,7 @@ public:
 		DWORD type			// Listen / Emulate
 	);
 	~Pipe();
+	// Funcs to access messages
 	std::list<msg> GetLogMessages();
 	void PutLogMessages(std::list<msg> mList);
 	std::list<msg> GetMessages();
@@ -91,26 +90,36 @@ public:
 	void AddSingleMessage(std::string message);
 	void ClearLog();
 private:
+	// Acuall WriteFile, ReadFile, for correct pipe work inside dll
 	True_WriteFile lpWriteFile;
 	True_ReadFile lpReadFile;
+	// Pipe Send / Reiceve func
 	void WorkThread();
+	// Place str to pipe
 	bool PushToPipe(std::string mToSend);
+	// Parce message data;
 	bool Log_parse(char* buffer, int readed, int* size);
 	bool Cmd_parse(char* buffer, int readed);
+
+	// Pipe init/work funcs
 	void Create(std::wstring pName);
 	void Connect(std::wstring pName);
 	void Send();	
 	void Recieve();
+	
+	// Some variables using across class
 	HANDLE hPipe = nullptr;
 	int exit_code;
 	std::mutex pipeMutex, dataMutex, logMutex;
 	std::wstring name;
 	DWORD type;
 	DWORD error;
+
 	// Connect log 
 	std::list<msg>* LogMessages;
 	// Listined data
 	std::list<msg>* Messages;
+	// Pipe Send / Reiceve thread
 	std::future<void>* hThread = nullptr;
 };
 
