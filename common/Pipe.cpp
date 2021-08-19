@@ -101,29 +101,27 @@ void Pipe::WorkThread()
 bool Pipe::PushToPipe(std::string mToSend) {
 	DWORD dwWritten;
 	if (mToSend.size() == 0) return false;
-	return lpWriteFile(hPipe, mToSend.c_str(), SINGLE_MSG_SIZE, &dwWritten, NULL);
+	while (!pipeMutex.try_lock());
+	bool res = lpWriteFile(hPipe, mToSend.c_str(), SINGLE_MSG_SIZE, &dwWritten, NULL);
+	pipeMutex.unlock();
+	return res;
 }
 
-bool Pipe::Log_parse(char* buffer, int readed, int* size)
+bool Pipe::parsable(char* buffer, int readed, int* size)
 {
-	if (buffer[0] != '2' || buffer[1] != '2') return false;
-	if (buffer[2] != 'l' || buffer[3] != 'o' || buffer[4] != 'g') return false;
-	if (buffer[5] != '>' || buffer[10] != '<') return false;
+	std::string temp = buffer;
+	temp = temp.substr(0, 11);
+	if (temp.find("22") != 0) 
+		return false;
+	if (temp.find(keyword) != 2) 
+		return false;
+	if (buffer[5] != '>' || buffer[10] != '<') 
+		return false;
 	buffer[10] = 0;
-	std::stringstream temp;
-	temp << &buffer[6];
-	temp >> std::hex >> *size;
+	std::stringstream stream;
+	stream << &buffer[6];
+	stream >> std::hex >> *size;
 	return true;
-}
-
-bool Pipe::Cmd_parse(char* buffer, int readed)
-{
-	if (buffer[0] != '2' || buffer[1] != '2') return false;
-	if (buffer[2] != 'c' || buffer[3] != 'm' || buffer[4] != 'd') return false;
-	if (buffer[5] != '>' || buffer[10] != '<') return false;
-	if (buffer[11] == 'l' || buffer[12] == 'o' || buffer[13] == 'g') return true;
-	if (buffer[11] == 'e' || buffer[12] == 'm' || buffer[13] == 'l') return true;
-	return false;
 }
 
 void Pipe::Create(std::wstring pName) {
@@ -137,6 +135,14 @@ void Pipe::Create(std::wstring pName) {
 		NULL);
 }
 
+std::string Pipe::wtochar(std::wstring string)
+{
+	using convert_type = std::codecvt_utf8<wchar_t>;
+	std::wstring_convert<convert_type, wchar_t> converter;
+	std::string res = converter.to_bytes(string);
+	return res;
+}
+
 void Pipe::Connect(std::wstring pName) {
 	while (!hPipe || hPipe == INVALID_HANDLE_VALUE) {
 		hPipe = CreateFile(pName.c_str(),
@@ -146,11 +152,8 @@ void Pipe::Connect(std::wstring pName) {
 			FILE_ATTRIBUTE_NORMAL, NULL);
 	}
 	while (!this->logMutex.try_lock());
-	char buffer[1024];
-	using convert_type = std::codecvt_utf8<wchar_t>;
-	std::wstring_convert<convert_type, wchar_t> converter;
-	std::string converted_str = converter.to_bytes(pName);
-	sprintf(buffer, "Pipe %X %s connected!!!\0", hPipe, converted_str.c_str());
+	char buffer[1024];	
+	sprintf(buffer, "Pipe %X %s connected!!!\0", hPipe, wtochar(pName).c_str());
 	LogMessages->push_back({ (DWORD)LogMessages->size(), false, false, std::string(buffer) });
 	this->logMutex.unlock();
 }
@@ -162,13 +165,36 @@ void Pipe::Send() {
 		Sleep(10);
 		while (Messages->size() > size)
 		{
+			//init
+			std::string init_message = "22ini>", message = wtochar(name.substr(0, 3));
+			std::stringstream stream1, stream2;
+			stream1 << std::hex << Messages->size() - size;
+			message.append(stream1.str());
+			stream2 << std::hex << (int)message.size();
+			char _size[4];
+			memset(_size, 48, 4*sizeof(char));
+			int div = 0;
+			if (message.size() < 16) div = 3;
+			else if (message.size() < 256) div = 2;
+			else if (message.size() < 4096) div = 1;
+			else if (message.size() < 65535) div = 0;
+			// no higher support by now, cos of >XXXX< field
+			memcpy(&_size[div], stream2.str().c_str(), sizeof(char) * (4 - div));
+			init_message.append(_size);
+			init_message.append("<");
+			init_message.append(message);
+			PushToPipe(init_message);
+			//data trancfer
 			while (!dataMutex.try_lock());
 			auto it = Messages->begin();
 			std::advance(it, size);
-			for (it; it != Messages->end(); it++) {
+			auto itprev = it;
+			do{
 				PushToPipe(it->message);
+				itprev = it;
+				it++;
 				size++;
-			}
+			} while (it != Messages->end() && itprev->order + 1 == it->order);
 			dataMutex.unlock();
 		}
 	}
@@ -180,30 +206,41 @@ void Pipe::Recieve() {
 	while (exit_code < 0)
 	{
 		std::string message;
-		bool end_sequence = false;
 		int m_size = 0;
-		do {
+		//Init message
+		while (!pipeMutex.try_lock());
+		bool readres = false;
+		while (exit_code < 0 && !readres) {
+			readres = lpReadFile(hPipe, buffer, SINGLE_MSG_SIZE, &dwRead, NULL);
+		}
+		pipeMutex.unlock();
+		std::string init_message = buffer;
+		if (init_message.find("22ini") != 0)
+			continue;
+		keyword = init_message.substr(init_message.find("<")+1,3);
+		std::stringstream stream1, stream2;
+		int _size = 0;
+		stream1 << std::dec << init_message.substr(init_message.find(">")+1, 4);
+		stream1 >> _size;
+		_size -= 3;
+		stream2 << std::hex << init_message.substr(init_message.find("<") + 4, _size);
+		stream2 >> _size;
+		int i = 0;
+		do{
 			while (!pipeMutex.try_lock());
-			bool readres = false;
+			readres = false;
 			while (exit_code < 0 && !readres) {
 				readres = lpReadFile(hPipe, buffer, SINGLE_MSG_SIZE, &dwRead, NULL);
 			}
 			pipeMutex.unlock();
 			if (exit_code >= 0)
 				goto end;
-			if (!Log_parse(buffer, dwRead, &m_size)) {
-				if(Cmd_parse(buffer, dwRead)){
-					message.append(std::string(&buffer[11], 3));
-					end_sequence = true;
-					break;
-				}
+			if (!parsable(buffer, dwRead, &m_size)) {
 				continue;
 			}
-			if (std::string(&buffer[11]).find("end@#$?") == 0)
-				end_sequence = true;
-			else
-				message.append(std::string(&buffer[11], m_size));
-		} while (!end_sequence);
+			message.append(std::string(&buffer[11], m_size));
+			i++;
+		} while (i < _size);
 		Messages->push_back({ (DWORD)Messages->size(), false, false, message });
 		if (exit_code >= 0)
 			goto end;

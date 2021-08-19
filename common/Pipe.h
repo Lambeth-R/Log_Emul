@@ -98,8 +98,7 @@ private:
 	// Place str to pipe
 	bool PushToPipe(std::string mToSend);
 	// Parce message data;
-	bool Log_parse(char* buffer, int readed, int* size);
-	bool Cmd_parse(char* buffer, int readed);
+	bool parsable(char* buffer, int readed, int* size);
 
 	// Pipe init/work funcs
 	void Create(std::wstring pName);
@@ -107,6 +106,7 @@ private:
 	void Send();	
 	void Recieve();
 	
+	std::string wtochar(std::wstring string);
 	// Some variables using across class
 	HANDLE hPipe = nullptr;
 	int exit_code;
@@ -114,6 +114,7 @@ private:
 	std::wstring name;
 	DWORD type;
 	DWORD error;
+	std::string keyword;
 
 	// Connect log 
 	std::list<msg>* LogMessages;

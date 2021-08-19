@@ -75,7 +75,7 @@ void cMain::MsgSync()
 	Pipe* cPipe = Pipe::GetInstance(pipename[0], PIPE_CONNECT | PIPE_SEND);
 	Pipe* lPipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_RECIEVE);
 	Pipe* ePipe = Pipe::GetInstance(pipename[2], PIPE_CONNECT | PIPE_RECIEVE);
-	std::list<msg> messages[4];
+	std::list<msg> messages[4]; // cmdP, logP, emlP, messages from log
 	std::list<msg> temp;
 	while (sync_exit_code < 0)
 	{
@@ -100,16 +100,16 @@ void cMain::MsgSync()
 		}
 
 		temp = lPipe->GetLogMessages();
-		if (temp.size() > messages[2].size())
+		if (temp.size() > messages[1].size())
 		{
 			auto it = temp.begin();
-			std::advance(it, messages[2].size());
+			std::advance(it, messages[1].size());
 			while (it != temp.end()) {
-				messages[2].push_back(*it);
+				messages[1].push_back(*it);
 				it++;
 			}
 		}
-		for (auto i = messages[2].begin(); i != messages[2].end(); i++)
+		for (auto i = messages[1].begin(); i != messages[1].end(); i++)
 		{
 			if (!i._Ptr->_Myval.displayed) {
 				m_log_msgs->Insert(i._Ptr->_Myval.message, i._Ptr->_Myval.order);
