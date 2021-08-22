@@ -4,13 +4,16 @@
 #include "fProcess.h"
 #include "fLData.h"
 #include "../common/Pipe.h"
-
+#include "cOut.h"
 
 wxBEGIN_EVENT_TABLE(cMain, wxFrame)
     EVT_BUTTON(FOPENID, cMain::SelectProcess)
 	EVT_BUTTON(INJECTID, cMain::InjectWithin)
 	EVT_BUTTON(LISTEN, cMain::ListenMode)
 	EVT_BUTTON(EMULATE, cMain::EmulateMode)
+	EVT_BUTTON(LOAD, cMain::OnLoad)
+	EVT_BUTTON(SAVE, cMain::OnSave)
+	EVT_BUTTON(EXIT, cMain::OnExit)
 wxEND_EVENT_TABLE()
 
 wxBEGIN_EVENT_TABLE(cMList, wxListCtrl)
@@ -42,6 +45,14 @@ void cMain::SetSelected(Process* p)
 
 cMain::cMain() : wxFrame(nullptr, wxID_ANY, tMain_wind.c_str(), wxPoint((wxDisplay().GetGeometry().GetWidth() - mwind_size.x ) / 2, (wxDisplay().GetGeometry().GetHeight() - mwind_size.x) / 2), wxSize(mwind_size.x,mwind_size.y))
 {
+	wxMenu* file_menu = new wxMenu();
+	file_menu->Append(LOAD, _("&Load"));
+	file_menu->Append(SAVE, _("&Save"));
+	file_menu->AppendSeparator();
+	file_menu->Append(EXIT, "&Exit");
+	wxMenuBar* menu_bar = new wxMenuBar();
+	menu_bar->Append(file_menu, _("&File"));
+	SetMenuBar(menu_bar);
 	m_empty = new wxWindow(this, wxID_ANY, wxPoint(0, 0), mwind_size);
 	m_Inj_dial = new wxDirDialog(m_empty, tDir_Inj.c_str(), "",  wxDD_DIR_MUST_EXIST, wxDefaultPosition, wxSize(400, 25));
     m_Sel_file = new wxListBox(m_empty, wxID_ANY, wxPoint(20, 20), wxSize(500, 25));
@@ -51,13 +62,17 @@ cMain::cMain() : wxFrame(nullptr, wxID_ANY, tMain_wind.c_str(), wxPoint((wxDispl
 	m_log_btn = new wxButton(m_empty, LISTEN, tBtn_Log.c_str(), wxPoint(600, 60), wxSize(150, 40));
 	m_eml_btn = new wxButton(m_empty, EMULATE, tBtn_Eml.c_str(), wxPoint(600, 110), wxSize(150, 40));
 	m_log_msgs = new wxListBox(m_empty, wxID_ANY, wxPoint(600, 300), wxSize(150, 200));
-	sync_exit_code = -1;
+	sync_exit_code = -1;	
 	//m_sizer = new wxBoxSizer(wxVERTICAL);
 	//m_sizer->Add(m_empty, wxSizerFlags(1).Expand().Border());
 	//m_sizer->Add(m_Inj_dial, wxSizerFlags(2).Expand().Border());
 	//m_sizer->Add(m_Sel_file, wxSizerFlags(3).Expand().Border());
 	//m_sizer->Add(m_btn_sel_file, wxSizerFlags(4).Expand().Border());
 	//m_sizer->Add(m_btn_Inj, wxSizerFlags(5).Expand().Border());
+	Connect(LOAD, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(cMain::OnLoad));
+	Connect(SAVE, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(cMain::OnSave));
+	Connect(EXIT, wxEVT_COMMAND_MENU_SELECTED,	wxCommandEventHandler(cMain::OnExit));
+	Centre();
 }
 
 cMain::~cMain()
@@ -77,62 +92,68 @@ void cMain::MsgSync()
 	Pipe* ePipe = Pipe::GetInstance(pipename[2], PIPE_CONNECT | PIPE_RECIEVE);
 	std::list<msg> messages[4]; // cmdP, logP, emlP, messages from log
 	std::list<msg> temp;
+	// Todo: Make this thread real sleep like std::condition_variable but idk how to
 	while (sync_exit_code < 0)
 	{
-		Sleep(100);
-		temp = cPipe->GetLogMessages();
-		if (temp.size() > messages[0].size())
+		Sleep(300);
+		DWORD dSize = cPipe->GetLogMessages().size();
+		if (dSize > messages[0].size())
 		{
+			temp = cPipe->GetLogMessages();
 			auto it = temp.begin();
 			std::advance(it, messages[0].size());
 			while (it != temp.end()) {
 				messages[0].push_back(*it);
 				it++;
 			}
-		}
-		for (auto i = messages[0].begin(); i != messages[0].end(); i++)
-		{
-			if (!i._Ptr->_Myval.displayed) {
-				m_log_msgs->Insert(i._Ptr->_Myval.message, i._Ptr->_Myval.order);
-				i._Ptr->_Myval.displayed = true;
-				m_log_msgs->Refresh();
+			for (auto i = messages[0].begin(); i != messages[0].end(); i++)
+			{
+				if (!i._Ptr->_Myval.displayed) {
+					m_log_msgs->Insert(i._Ptr->_Myval.message, i._Ptr->_Myval.order);
+					i._Ptr->_Myval.displayed = true;
+					m_log_msgs->Refresh();
+				}
 			}
 		}
 
-		temp = lPipe->GetLogMessages();
-		if (temp.size() > messages[1].size())
+		
+		dSize = lPipe->GetLogMessages().size();
+		if (dSize > messages[1].size())
 		{
+			temp = lPipe->GetLogMessages();
 			auto it = temp.begin();
 			std::advance(it, messages[1].size());
 			while (it != temp.end()) {
 				messages[1].push_back(*it);
 				it++;
 			}
-		}
-		for (auto i = messages[1].begin(); i != messages[1].end(); i++)
-		{
-			if (!i._Ptr->_Myval.displayed) {
-				m_log_msgs->Insert(i._Ptr->_Myval.message, i._Ptr->_Myval.order);
-				i._Ptr->_Myval.displayed = true;
-				m_log_msgs->Refresh();
+			for (auto i = messages[1].begin(); i != messages[1].end(); i++)
+			{
+				if (!i._Ptr->_Myval.displayed) {
+					m_log_msgs->Insert(i._Ptr->_Myval.message, i._Ptr->_Myval.order);
+					i._Ptr->_Myval.displayed = true;
+					m_log_msgs->Refresh();
+				}
 			}
 		}
-		temp = lPipe->GetMessages();
-		if (temp.size() > messages[3].size())
+		
+		dSize = lPipe->GetMessages().size();
+		if (dSize > messages[3].size())
 		{
+			temp = lPipe->GetMessages();
 			auto it = temp.begin();
 			std::advance(it, messages[3].size());
 			while (it != temp.end()) {
 				messages[3].push_back(*it);
 				it++;
 			}
-		}
-		for (auto i = messages[3].begin(); i != messages[3].end(); i++)
-		{
-			if (!i._Ptr->_Myval.displayed) {
-				m_recieved_msgs->InsertItem(i._Ptr->_Myval.order, i._Ptr->_Myval.message);
-				i._Ptr->_Myval.displayed = true;
-				m_recieved_msgs->Refresh();
+			for (auto i = messages[3].begin(); i != messages[3].end(); i++)
+			{
+				if (!i._Ptr->_Myval.displayed) {
+					m_recieved_msgs->InsertItem(i._Ptr->_Myval.order, i._Ptr->_Myval.message);
+					i._Ptr->_Myval.displayed = true;
+					m_recieved_msgs->Refresh();
+				}
 			}
 		}
 	}
@@ -229,6 +250,31 @@ void cMList::OnSelected(wxListEvent& event)
 {
 	fLData* linfo = new fLData(this, event.GetItem().m_itemId);
 	linfo->Show();
+}
+
+void cMain::OnSave(wxCommandEvent& event)
+{
+	Pipe* lPipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_RECIEVE);
+	LoadSaveData = new std::list<msg>(lPipe->GetMessages());
+	cOut out(*LoadSaveData);
+	out.print();
+}
+
+void cMain::OnLoad(wxCommandEvent& event)
+{
+	wxFileDialog openFileDialog(this, _("Open XYZ file"), "", "", "DAT files (*.DAT)|*.dat", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+	if (openFileDialog.ShowModal() == wxID_CANCEL)
+		return;     // the user changed idea...
+	cOut out(openFileDialog.GetPath().c_str().AsChar());
+	LoadSaveData = out.GetData();
+	Pipe* lPipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_RECIEVE);
+	lPipe->PutMessages(*LoadSaveData);
+}
+
+void cMain::OnExit(wxCommandEvent& event)
+{
+	sync_exit_code = 1;
+	Close(true);
 }
 
 cMain* cMain::GetInstance()

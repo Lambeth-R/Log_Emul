@@ -99,6 +99,7 @@ private:
 	bool PushToPipe(std::string mToSend);
 	// Parce message data;
 	bool parsable(char* buffer, int readed, int* size);
+	void wait(int size);
 
 	// Pipe init/work funcs
 	void Create(std::wstring pName);
@@ -110,7 +111,8 @@ private:
 	// Some variables using across class
 	HANDLE hPipe = nullptr;
 	int exit_code;
-	std::mutex pipeMutex, dataMutex, logMutex;
+	std::mutex pipeMutex, dataMutex, logMutex, muxWait;
+	std::condition_variable cvBlock;
 	std::wstring name;
 	DWORD type;
 	DWORD error;

@@ -4,6 +4,9 @@
 
 #include <string>
 #include <Windows.h>
+#include <map>
+
+extern std::map <std::string, DWORD> enumFucs;
 
 // Base Func class
 class sysfunk
@@ -11,13 +14,14 @@ class sysfunk
 public:
 	std::string* base_string = nullptr;
 	bool CorrectInited = false;
+	int FieldsCount;
 };
 
 // ReadFile info class
 class cReadFile : public sysfunk
 {
 public:
-	cReadFile(std::string bs);
+	cReadFile(std::string bs, int fields);
 	~cReadFile();
 private:
 	bool Parse();

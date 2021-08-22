@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="..\common\common.h" />
     <ClInclude Include="..\common\Pipe.h" />
+    <ClInclude Include="cOut.h" />
     <ClInclude Include="fLData.h" />
     <ClInclude Include="cMain.h" />
     <ClInclude Include="cProcesses.h" />
@@ -32,6 +33,7 @@
   <ItemGroup>
     <ClCompile Include="..\common\common.cpp" />
     <ClCompile Include="..\common\Pipe.cpp" />
+    <ClCompile Include="cOut.cpp" />
     <ClCompile Include="fLData.cpp" />
     <ClCompile Include="cMain.cpp" />
     <ClCompile Include="cProcesses.cpp" />
@@ -170,6 +172,7 @@
       <PrecompiledHeaderFile />
       <LanguageStandard_C>Default</LanguageStandard_C>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

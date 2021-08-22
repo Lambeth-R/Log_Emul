@@ -1,10 +1,19 @@
 #include "sysfunk.h"
 
-cReadFile::cReadFile(std::string bs)
+std::map <std::string, DWORD> enumFucs
+{
+	{ "CreateFile",		0 },
+	{ "WriteFile",		1 },
+	{ "ReadFile",		2 },
+	{ "CloseHandle",	3 },
+};
+
+cReadFile::cReadFile(std::string bs, int fields)
 {
 	this->base_string = new std::string(bs);
 	if (Parse())
 		CorrectInited = true;
+	this->FieldsCount = fields;
 }
 
 cReadFile::~cReadFile()

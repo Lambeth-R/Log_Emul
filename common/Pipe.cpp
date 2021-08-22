@@ -60,6 +60,8 @@ void Pipe::PutMessages(std::list<msg> mList)
 		this->Messages->push_back(*it);
 	}
 	dataMutex.unlock();
+	std::unique_lock<std::mutex> ul(muxWait);
+	cvBlock.notify_one();
 }
 
 void Pipe::WorkThread()
@@ -158,11 +160,21 @@ void Pipe::Connect(std::wstring pName) {
 	this->logMutex.unlock();
 }
 
+void Pipe::wait(int size)
+{
+	while (!(Messages->size() > size))
+	{
+		std::unique_lock<std::mutex> ul(muxWait);
+		cvBlock.wait(ul);
+	}
+}
+
 void Pipe::Send() {
 	int size = 0;
 	while (exit_code < 0)
 	{
 		Sleep(10);
+		wait(size);
 		while (Messages->size() > size)
 		{
 			//init
@@ -252,7 +264,11 @@ end:
 
 void Pipe::AddSingleMessage(std::string message)
 {
+	while (!dataMutex.try_lock());
 	Messages->push_back(msg{(DWORD) Messages->size(), false, false, message });
+	dataMutex.unlock();
+	std::unique_lock<std::mutex> ul(muxWait);
+	cvBlock.notify_one();
 }
 
 void Pipe::ClearLog()

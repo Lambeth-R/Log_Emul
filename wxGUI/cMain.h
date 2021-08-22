@@ -14,6 +14,7 @@
 #include "contsts.h"
 #include "cProcesses.h"
 #include "sysfunk.h"
+#include "../common/common.h"
 
 class cMList : public wxListCtrl
 {
@@ -52,6 +53,10 @@ public:
 	void operator=(const cMain&) = delete;
 
 private:
+	// Meun Bar Funcs
+	void OnLoad(wxCommandEvent& event);
+	void OnSave(wxCommandEvent& event);
+	void OnExit(wxCommandEvent& event);
 	// wxListBox -es synchronization func
 	void MsgSync();
 	// Inject exe, (warp acually, never use Inject itself)
@@ -78,6 +83,7 @@ private:
 	wxButton* m_eml_btn = nullptr;
 	// MsgSync async handle
 	std::future<void>* m_msg_sync = nullptr;
+	std::list<msg>* LoadSaveData;
 	//std::list<sysfunk> funks_data;
 	// MsgSync exit code
 	int sync_exit_code;
