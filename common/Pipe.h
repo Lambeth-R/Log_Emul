@@ -89,10 +89,12 @@ public:
 	void PutMessages(std::list<msg> mList);
 	void AddSingleMessage(std::string message);
 	void ClearLog();
+	void SetRightFuncs(True_WriteFile TrueWriteFile, True_ReadFile TrueReadFile);
 private:
 	// Acuall WriteFile, ReadFile, for correct pipe work inside dll
 	True_WriteFile lpWriteFile;
 	True_ReadFile lpReadFile;
+	bool correct_init = false;
 	// Pipe Send / Reiceve func
 	void WorkThread();
 	// Place str to pipe
@@ -111,8 +113,8 @@ private:
 	// Some variables using across class
 	HANDLE hPipe = nullptr;
 	int exit_code;
-	std::mutex pipeMutex, dataMutex, logMutex, muxWait;
-	std::condition_variable cvBlock;
+	std::mutex pipeMutex, dataMutex, logMutex, muxWait, muxInit;
+	std::condition_variable cvBlock, cvInit;
 	std::wstring name;
 	DWORD type;
 	DWORD error;

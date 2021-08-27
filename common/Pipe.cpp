@@ -9,18 +9,8 @@ Pipe::Pipe(std::wstring name, DWORD type)
 	this->type = type;
 	LogMessages = new std::list<msg>;
 	Messages = new std::list<msg>;
-	HMODULE kerHandle = GetModuleHandleA("Kernel32.dll");
-	if (!kerHandle)
-		error = GetLastError();
-	else {
-		error = 0;
-		lpWriteFile = (True_WriteFile)GetProcAddress(kerHandle, "WriteFile");
-		lpReadFile = (True_ReadFile)GetProcAddress(kerHandle, "ReadFile");
-		if (!(lpReadFile && lpWriteFile))
-			error = GetLastError();
-		else
-			hThread = new std::future<void>(std::async(std::launch::async, &Pipe::WorkThread, this));
-	}
+	//Here was useless init of ReadFile / Writefile from kernel32. Useless cos that pointers is exactly what was changed. Now need to use SetRightFuncs
+	hThread = new std::future<void>(std::async(std::launch::async, &Pipe::WorkThread, this));
 }
 
 Pipe::~Pipe()
@@ -66,6 +56,10 @@ void Pipe::PutMessages(std::list<msg> mList)
 
 void Pipe::WorkThread()
 {
+	if (!correct_init) {
+		std::unique_lock<std::mutex> ul(muxInit);
+		cvInit.wait(ul);
+	}
 	char buffer[1024];
 	DWORD dwRead;
 	DWORD err = 0;
@@ -97,7 +91,7 @@ void Pipe::WorkThread()
 	default:
 		break;
 	}
-	
+
 }
 
 bool Pipe::PushToPipe(std::string mToSend) {
@@ -113,11 +107,11 @@ bool Pipe::parsable(char* buffer, int readed, int* size)
 {
 	std::string temp = buffer;
 	temp = temp.substr(0, 11);
-	if (temp.find("22") != 0) 
+	if (temp.find("22") != 0)
 		return false;
-	if (temp.find(keyword) != 2) 
+	if (temp.find(keyword) != 2)
 		return false;
-	if (buffer[5] != '>' || buffer[10] != '<') 
+	if (buffer[5] != '>' || buffer[10] != '<')
 		return false;
 	buffer[10] = 0;
 	std::stringstream stream;
@@ -154,7 +148,7 @@ void Pipe::Connect(std::wstring pName) {
 			FILE_ATTRIBUTE_NORMAL, NULL);
 	}
 	while (!this->logMutex.try_lock());
-	char buffer[1024];	
+	char buffer[1024];
 	sprintf(buffer, "Pipe %X %s connected!!!\0", hPipe, wtochar(pName).c_str());
 	LogMessages->push_back({ (DWORD)LogMessages->size(), false, false, std::string(buffer) });
 	this->logMutex.unlock();
@@ -177,36 +171,49 @@ void Pipe::Send() {
 		wait(size);
 		while (Messages->size() > size)
 		{
-			//init
+			while (!dataMutex.try_lock());
+			auto it = Messages->begin();
+			std::advance(it, size);
 			std::string init_message = "22ini>", message = wtochar(name.substr(0, 3));
 			std::stringstream stream1, stream2;
-			stream1 << std::hex << Messages->size() - size;
+			int mcount = ceil((double)it->message.size() / SINGLE_MSG_SIZE);
+			stream1 << std::hex << mcount;
 			message.append(stream1.str());
 			stream2 << std::hex << (int)message.size();
 			char _size[4];
-			memset(_size, 48, 4*sizeof(char));
+			memset(_size, 48, 4 * sizeof(char));
 			int div = 0;
 			if (message.size() < 16) div = 3;
 			else if (message.size() < 256) div = 2;
 			else if (message.size() < 4096) div = 1;
 			else if (message.size() < 65535) div = 0;
-			// no higher support by now, cos of >XXXX< field
 			memcpy(&_size[div], stream2.str().c_str(), sizeof(char) * (4 - div));
-			init_message.append(_size);
+			init_message.append(_size,4);
 			init_message.append("<");
 			init_message.append(message);
 			PushToPipe(init_message);
-			//data trancfer
-			while (!dataMutex.try_lock());
-			auto it = Messages->begin();
-			std::advance(it, size);
-			auto itprev = it;
-			do{
-				PushToPipe(it->message);
-				itprev = it;
-				it++;
-				size++;
-			} while (it != Messages->end() && itprev->order + 1 == it->order);
+			std::string sending = it->message;
+			do {
+				std::string single_msg = "22";
+				single_msg.append(wtochar(name.substr(0, 3)));
+				single_msg.append(">");
+				int div = sending.size() > SINGLE_MSG_SIZE ? SINGLE_MSG_SIZE - single_msg.length() - 6 : sending.size();
+				std::stringstream stream3;
+				stream3 << std::hex << div;
+				char _size[4];
+				memset(_size, 48, 4 * sizeof(char));
+				int off = 0;
+				if (div < 16) off = 3;
+				else if (div < 256) off = 2;
+				else if (div < 4096) off = 1;
+				memcpy(&_size[off], stream3.str().c_str(), sizeof(char) * (4 - off));
+				single_msg.append(_size, 4);
+				single_msg.append("<");
+				single_msg.append(sending.substr(0, div));
+				sending = sending.substr(div);
+				PushToPipe(single_msg);
+			} while (sending.size() > 0);
+			size++;
 			dataMutex.unlock();
 		}
 	}
@@ -215,9 +222,9 @@ void Pipe::Send() {
 void Pipe::Recieve() {
 	char buffer[1024];
 	DWORD dwRead;
+
 	while (exit_code < 0)
 	{
-		std::string message;
 		int m_size = 0;
 		//Init message
 		while (!pipeMutex.try_lock());
@@ -229,16 +236,18 @@ void Pipe::Recieve() {
 		std::string init_message = buffer;
 		if (init_message.find("22ini") != 0)
 			continue;
-		keyword = init_message.substr(init_message.find("<")+1,3);
+		keyword = init_message.substr(init_message.find("<") + 1, 3);
 		std::stringstream stream1, stream2;
 		int _size = 0;
-		stream1 << std::dec << init_message.substr(init_message.find(">")+1, 4);
+		stream1 << std::hex << init_message.substr(init_message.find(">") + 1, 4);
 		stream1 >> _size;
 		_size -= 3;
 		stream2 << std::hex << init_message.substr(init_message.find("<") + 4, _size);
 		stream2 >> _size;
 		int i = 0;
-		do{
+		std::string message;
+		//char* message = new char[_size * SINGLE_MSG_SIZE];
+		do {
 			while (!pipeMutex.try_lock());
 			readres = false;
 			while (exit_code < 0 && !readres) {
@@ -250,6 +259,9 @@ void Pipe::Recieve() {
 			if (!parsable(buffer, dwRead, &m_size)) {
 				continue;
 			}
+			//memcpy(&message[i * SINGLE_MSG_SIZE], &buffer[11], m_size);
+			//if (m_size < SINGLE_MSG_SIZE)
+			//	message[m_size] = '\0';
 			message.append(std::string(&buffer[11], m_size));
 			i++;
 		} while (i < _size);
@@ -265,7 +277,7 @@ end:
 void Pipe::AddSingleMessage(std::string message)
 {
 	while (!dataMutex.try_lock());
-	Messages->push_back(msg{(DWORD) Messages->size(), false, false, message });
+	Messages->push_back(msg{ (DWORD)Messages->size(), false, false, message });
 	dataMutex.unlock();
 	std::unique_lock<std::mutex> ul(muxWait);
 	cvBlock.notify_one();
@@ -274,4 +286,13 @@ void Pipe::AddSingleMessage(std::string message)
 void Pipe::ClearLog()
 {
 	LogMessages->clear();
+}
+
+void Pipe::SetRightFuncs(True_WriteFile TrueWriteFile, True_ReadFile TrueReadFile)
+{
+	lpWriteFile = TrueWriteFile;
+	lpReadFile = TrueReadFile;
+	correct_init = true;
+	std::unique_lock<std::mutex> ul(muxInit);
+	cvInit.notify_one();
 }

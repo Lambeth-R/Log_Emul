@@ -5,8 +5,6 @@
 #include "wx/wx.h"
 #include <string>
 
-#define SINGLE_MSG_SIZE 1024
-
 const std::string tMain_wind = "Lambeth`s injector";
 const std::string tBtn_Inj = "Inject";
 const std::string tBtn_Log = "Listen";

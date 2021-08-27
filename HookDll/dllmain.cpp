@@ -4,9 +4,9 @@
 #include <string>
 #include <future>
 #include <stdio.h>
-#include "Help.h"
 #include "myAPI.h"
 #include "detours.h"
+#include "Emulater.h"
 
 #include "../common/common.h"
 #include "../common/Pipe.h"
@@ -16,16 +16,7 @@ int exit_code = -1;
 COMMANDS CurrentState = COMMANDS::Cnone;
 HINSTANCE selfModuleHandle;
 
-void SwitchContext(std::string message) {
-	if (message.find("log") == 0) {
-		CurrentState = COMMANDS::Cloggin;
-		Pipe* lPipe = Pipe::GetInstance(pipename[1], PIPE_CREATE | PIPE_SEND);
-	}
-	if (message.find("eml") == 0) {
-		CurrentState = COMMANDS::Cemul;
-		Pipe* ePipe = Pipe::GetInstance(pipename[2], PIPE_CREATE | PIPE_RECIEVE);
-	}
-}
+
 // Main thread, that responce on cmd_pipe action
 int WINAPI HookThread(HMODULE hModule)
 {
@@ -33,7 +24,11 @@ int WINAPI HookThread(HMODULE hModule)
 	DWORD dwRead;
 	std::string readed_msg;
 	Pipe* cPipe = Pipe::GetInstance(pipename[0], PIPE_CREATE | PIPE_RECIEVE);
+	Sleep(1);
+	cPipe->SetRightFuncs(TrueWriteFile, TrueReadFile);
 	std::list<msg> messages;
+	Emulater* emulater = Emulater::GetInstance();
+	emulater->Activate();
 	while (exit_code < 0)
 	{
 		Sleep(100);
@@ -41,10 +36,9 @@ int WINAPI HookThread(HMODULE hModule)
 		if (temp.size() > messages.size())
 		{
 			readed_msg = temp.back().message;
-			SwitchContext(readed_msg);
+			emulater->SwitchContext(readed_msg);
 			messages.push_back(temp.back());
 		}
-
 	}
 	return 0;
 }

@@ -88,15 +88,21 @@ cMain::~cMain()
 void cMain::MsgSync()
 {
 	Pipe* cPipe = Pipe::GetInstance(pipename[0], PIPE_CONNECT | PIPE_SEND);
+	cPipe->SetRightFuncs(&WriteFile, &ReadFile);
 	Pipe* lPipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_RECIEVE);
-	Pipe* ePipe = Pipe::GetInstance(pipename[2], PIPE_CONNECT | PIPE_RECIEVE);
-	std::list<msg> messages[4]; // cmdP, logP, emlP, messages from log
+	lPipe->SetRightFuncs(&WriteFile, &ReadFile);
+	Pipe* ePipe = Pipe::GetInstance(pipename[2], PIPE_CONNECT | PIPE_SEND);
+	ePipe->SetRightFuncs(&WriteFile, &ReadFile);
+	std::list<msg> messages[3]; // cmdP, logP, emlP
 	std::list<msg> temp;
+	DWORD LMSize = lPipe->GetMessages().size();
+	DWORD LSIZE = 0;
 	// Todo: Make this thread real sleep like std::condition_variable but idk how to
 	while (sync_exit_code < 0)
 	{
 		Sleep(300);
 		DWORD dSize = cPipe->GetLogMessages().size();
+		//CMD logs
 		if (dSize > messages[0].size())
 		{
 			temp = cPipe->GetLogMessages();
@@ -115,8 +121,7 @@ void cMain::MsgSync()
 				}
 			}
 		}
-
-		
+		// LOG logs
 		dSize = lPipe->GetLogMessages().size();
 		if (dSize > messages[1].size())
 		{
@@ -136,18 +141,43 @@ void cMain::MsgSync()
 				}
 			}
 		}
-		
-		dSize = lPipe->GetMessages().size();
-		if (dSize > messages[3].size())
+		// EML logs
+		dSize = ePipe->GetLogMessages().size();
+		if (dSize > messages[2].size())
 		{
-			temp = lPipe->GetMessages();
+			temp = lPipe->GetLogMessages();
 			auto it = temp.begin();
-			std::advance(it, messages[3].size());
+			std::advance(it, messages[2].size());
 			while (it != temp.end()) {
-				messages[3].push_back(*it);
+				messages[2].push_back(*it);
 				it++;
 			}
-			for (auto i = messages[3].begin(); i != messages[3].end(); i++)
+			for (auto i = messages[2].begin(); i != messages[2].end(); i++)
+			{
+				if (!i._Ptr->_Myval.displayed) {
+					m_log_msgs->Insert(i._Ptr->_Myval.message, i._Ptr->_Myval.order);
+					i._Ptr->_Myval.displayed = true;
+					m_log_msgs->Refresh();
+				}
+			}
+		}
+		// Recieved/Readed messages (main subwindow)
+		if (LMSize < lPipe->GetMessages().size())
+		{
+			if (LoadSaveData == nullptr)
+				LoadSaveData = new std::list<msg>;
+			temp = lPipe->GetMessages();
+			auto it = temp.begin();
+			std::advance(it, LMSize);
+			while (it != temp.end()) {
+				LoadSaveData->push_back(*it);
+				LMSize++;
+				it++;
+			}
+		}		
+		if(LoadSaveData != nullptr && LSIZE < LoadSaveData->size()){
+			LSIZE = LoadSaveData->size();
+			for (auto i = LoadSaveData->begin(); i != LoadSaveData->end(); i++)
 			{
 				if (!i._Ptr->_Myval.displayed) {
 					m_recieved_msgs->InsertItem(i._Ptr->_Myval.order, i._Ptr->_Myval.message);
@@ -230,7 +260,7 @@ void cMain::ListenMode(wxCommandEvent& evt)
 		return;
 	Pipe* lPipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_RECIEVE);
 	Pipe* cPipe = Pipe::GetInstance(pipename[0], PIPE_CONNECT | PIPE_SEND);
-	cPipe->AddSingleMessage("22cmd>0003<log");
+	cPipe->AddSingleMessage("log");
 	lPipe->ClearLog();
 }
 
@@ -240,10 +270,11 @@ void cMain::EmulateMode(wxCommandEvent& evt)
 		return;
 	if (m_pselected == NULL)
 		return;
-	Pipe* ePipe = Pipe::GetInstance(pipename[2], PIPE_CONNECT | PIPE_RECIEVE);
+	Pipe* ePipe = Pipe::GetInstance(pipename[2], PIPE_CONNECT | PIPE_SEND);
 	Pipe* cPipe = Pipe::GetInstance(pipename[0], PIPE_CONNECT | PIPE_SEND);
-	cPipe->AddSingleMessage("22cmd>0003<eml");
-	ePipe->ClearLog();
+	cPipe->AddSingleMessage("eml");
+	//ePipe->ClearLog();
+	ePipe->PutMessages(*LoadSaveData);
 }
 
 void cMList::OnSelected(wxListEvent& event)
@@ -266,9 +297,9 @@ void cMain::OnLoad(wxCommandEvent& event)
 	if (openFileDialog.ShowModal() == wxID_CANCEL)
 		return;     // the user changed idea...
 	cOut out(openFileDialog.GetPath().c_str().AsChar());
-	LoadSaveData = out.GetData();
-	Pipe* lPipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_RECIEVE);
-	lPipe->PutMessages(*LoadSaveData);
+	LoadSaveData = new std::list<msg>(*out.GetData());
+	//Pipe* lPipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_RECIEVE);
+	//lPipe->PutMessages(*LoadSaveData);
 }
 
 void cMain::OnExit(wxCommandEvent& event)

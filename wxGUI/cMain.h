@@ -83,7 +83,7 @@ private:
 	wxButton* m_eml_btn = nullptr;
 	// MsgSync async handle
 	std::future<void>* m_msg_sync = nullptr;
-	std::list<msg>* LoadSaveData;
+	std::list<msg>* LoadSaveData = nullptr;
 	//std::list<sysfunk> funks_data;
 	// MsgSync exit code
 	int sync_exit_code;

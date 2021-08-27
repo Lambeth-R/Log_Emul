@@ -12,6 +12,7 @@ struct msg {
 };
 // All pipe names
 extern std::wstring pipename[3];
+std::list<msg>* Div_Messages(char* text, long long length, const char pref[] = "log");
 #endif 
 
 
