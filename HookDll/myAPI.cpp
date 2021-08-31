@@ -16,10 +16,11 @@ __declspec(dllexport) BOOL WINAPI CustomReadFile(
 	DWORD        nNumberOfBytesToRead,
 	LPDWORD      lpNumberOfBytesRead,
 	LPOVERLAPPED lpOverlapped) {
-	DWORD dwWritten, dwRead;
-	bool retValue = TrueReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+	DWORD dwWritten, dwRead;	
+	bool retValue = false;
 	Emulater* emulater = Emulater::GetInstance();
 	if (emulater->CurrentState == COMMANDS::Cloggin) {
+		retValue = TrueReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
 		Sleep(10);
 		std::string init_msg = "22log>0003<ini";
 		char msg[256];
@@ -39,7 +40,7 @@ __declspec(dllexport) BOOL WINAPI CustomReadFile(
 		Pipe* pipe = Pipe::GetInstance(pipename[1], PIPE_CREATE | PIPE_SEND);
 		pipe->SetRightFuncs(TrueWriteFile, TrueReadFile);
 		//pipe->PutMessages(*Div_Messages((char*)out.c_str(), out.size()));
-		pipe->AddSingleMessage(out);
+		pipe->PutSingleMessage(out);
 	}
 	else
 	if (emulater->CurrentState == COMMANDS::Cemul) {

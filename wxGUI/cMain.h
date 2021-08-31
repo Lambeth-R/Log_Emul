@@ -15,6 +15,7 @@
 #include "cProcesses.h"
 #include "sysfunk.h"
 #include "../common/common.h"
+#include "../common/Pipe.h"
 
 class cMList : public wxListCtrl
 {
@@ -42,12 +43,10 @@ public:
 	// Process Selection window
 	void SelectProcess(wxCommandEvent& evt);
 	// Set selected proc parameters to wxListBox
-	void SetSelected(Process* p);	
-	// Inject outside class for emulate purposes
-	void InjectOutside();
+	void SetSelected(Process* p);
 	// Get info of selected process for emulate purposes
 	Process GetProcess();
-	// Singletone
+	// Singletone (Acually useless by now, was used in prev. iterations. But let it be)
 	static cMain* GetInstance();
 	cMain(cMain& other) = delete;
 	void operator=(const cMain&) = delete;
@@ -58,15 +57,16 @@ private:
 	void OnSave(wxCommandEvent& event);
 	void OnExit(wxCommandEvent& event);
 	// wxListBox -es synchronization func
-	void MsgSync();
+	void MsgSync(int idPipe);
 	// Inject exe, (warp acually, never use Inject itself)
-	void InjectWithin(wxCommandEvent& evt);
+	void InjectWarp(wxCommandEvent& evt);
 	// Inject code
 	void Inject();
 	// Button Listen routine
 	void ListenMode(wxCommandEvent& evt);
 	// Button Emulate routine
 	void EmulateMode(wxCommandEvent& evt);
+	void wait(Pipe* Pipe, int size, int MsgLog);
 	// Selected exe inject flag
 	bool injected = false;
 	// Gui handles
@@ -82,7 +82,7 @@ private:
 	wxButton* m_log_btn = nullptr;
 	wxButton* m_eml_btn = nullptr;
 	// MsgSync async handle
-	std::future<void>* m_msg_sync = nullptr;
+	std::future<void> *m_msg_sync1 = nullptr, * m_msg_sync2 = nullptr, * m_msg_sync3 = nullptr, * m_msg_sync4 = nullptr;
 	std::list<msg>* LoadSaveData = nullptr;
 	//std::list<sysfunk> funks_data;
 	// MsgSync exit code

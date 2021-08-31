@@ -9,6 +9,8 @@ Pipe::Pipe(std::wstring name, DWORD type)
 	this->type = type;
 	LogMessages = new std::list<msg>;
 	Messages = new std::list<msg>;
+	muxExtern = new std::mutex;
+	cvExtern = new std::condition_variable;
 	//Here was useless init of ReadFile / Writefile from kernel32. Useless cos that pointers is exactly what was changed. Now need to use SetRightFuncs
 	hThread = new std::future<void>(std::async(std::launch::async, &Pipe::WorkThread, this));
 }
@@ -20,38 +22,54 @@ Pipe::~Pipe()
 
 std::list<msg> Pipe::GetLogMessages()
 {
-	while (!logMutex.try_lock());
+	while (!muxLog.try_lock());
 	std::list<msg> TempResult = *LogMessages;
-	logMutex.unlock();
+	muxLog.unlock();
+	return TempResult;
+}
+
+std::list<msg> Pipe::GetMessages()
+{
+	while (!muxData.try_lock());
+	std::list<msg> TempResult = *Messages;
+	muxData.unlock();
 	return TempResult;
 }
 
 void Pipe::PutLogMessages(std::list<msg> mList)
 {
-	while (!logMutex.try_lock());
+	while (!muxLog.try_lock());
 	for (auto it = mList.begin(); it != mList.end(); it++) {
-		this->LogMessages->push_back(*it);
+		PutSingleLogMessage(it->message);
 	}
-	logMutex.unlock();
+	muxLog.unlock();
 }
 
-std::list<msg> Pipe::GetMessages()
+void Pipe::PutSingleLogMessage(std::string sMsg)
 {
-	while (!dataMutex.try_lock());
-	std::list<msg> TempResult = *Messages;
-	dataMutex.unlock();
-	return TempResult;
+	LogMessages->push_back({ (DWORD)LogMessages->size(), false, false, std::string(sMsg) });
+	std::unique_lock<std::mutex> ul1(muxWait);
+	cvBlock.notify_one();
+	std::unique_lock<std::mutex> ul2(*muxExtern);
+	cvExtern->notify_one();
 }
 
 void Pipe::PutMessages(std::list<msg> mList)
 {
-	while (!dataMutex.try_lock());
+	while (!muxData.try_lock());
 	for (auto it = mList.begin(); it != mList.end(); it++) {
-		this->Messages->push_back(*it);
+		PutSingleMessage(it->message);
 	}
-	dataMutex.unlock();
-	std::unique_lock<std::mutex> ul(muxWait);
+	muxData.unlock();
+}
+
+void Pipe::PutSingleMessage(std::string sMsg)
+{
+	Messages->push_back( {(DWORD) Messages->size(), false, false, std::string(sMsg)});
+	std::unique_lock<std::mutex> ul1(muxWait);
 	cvBlock.notify_one();
+	std::unique_lock<std::mutex> ul2(*muxExtern);
+	cvExtern->notify_one();
 }
 
 void Pipe::WorkThread()
@@ -97,9 +115,9 @@ void Pipe::WorkThread()
 bool Pipe::PushToPipe(std::string mToSend) {
 	DWORD dwWritten;
 	if (mToSend.size() == 0) return false;
-	while (!pipeMutex.try_lock());
+	while (!muxPipe.try_lock());
 	bool res = lpWriteFile(hPipe, mToSend.c_str(), SINGLE_MSG_SIZE, &dwWritten, NULL);
-	pipeMutex.unlock();
+	muxPipe.unlock();
 	return res;
 }
 
@@ -131,7 +149,7 @@ void Pipe::Create(std::wstring pName) {
 		NULL);
 }
 
-std::string Pipe::wtochar(std::wstring string)
+std::string wtochar(std::wstring string)
 {
 	using convert_type = std::codecvt_utf8<wchar_t>;
 	std::wstring_convert<convert_type, wchar_t> converter;
@@ -147,11 +165,11 @@ void Pipe::Connect(std::wstring pName) {
 			OPEN_EXISTING,
 			FILE_ATTRIBUTE_NORMAL, NULL);
 	}
-	while (!this->logMutex.try_lock());
+	while (!muxLog.try_lock());
 	char buffer[1024];
 	sprintf(buffer, "Pipe %X %s connected!!!\0", hPipe, wtochar(pName).c_str());
-	LogMessages->push_back({ (DWORD)LogMessages->size(), false, false, std::string(buffer) });
-	this->logMutex.unlock();
+	PutSingleLogMessage(buffer);
+	muxLog.unlock();
 }
 
 void Pipe::wait(int size)
@@ -163,6 +181,14 @@ void Pipe::wait(int size)
 	}
 }
 
+int calc_div(std::string message)
+{
+	if (message.size() < 16) return 3;
+	else if (message.size() < 256) return 2;
+	else if (message.size() < 4096) return 1;
+	else if (message.size() < 65535) return 0;
+}
+
 void Pipe::Send() {
 	int size = 0;
 	while (exit_code < 0)
@@ -171,7 +197,7 @@ void Pipe::Send() {
 		wait(size);
 		while (Messages->size() > size)
 		{
-			while (!dataMutex.try_lock());
+			while (!muxData.try_lock());
 			auto it = Messages->begin();
 			std::advance(it, size);
 			std::string init_message = "22ini>", message = wtochar(name.substr(0, 3));
@@ -182,11 +208,7 @@ void Pipe::Send() {
 			stream2 << std::hex << (int)message.size();
 			char _size[4];
 			memset(_size, 48, 4 * sizeof(char));
-			int div = 0;
-			if (message.size() < 16) div = 3;
-			else if (message.size() < 256) div = 2;
-			else if (message.size() < 4096) div = 1;
-			else if (message.size() < 65535) div = 0;
+			int div = calc_div(message);
 			memcpy(&_size[div], stream2.str().c_str(), sizeof(char) * (4 - div));
 			init_message.append(_size,4);
 			init_message.append("<");
@@ -197,7 +219,7 @@ void Pipe::Send() {
 				std::string single_msg = "22";
 				single_msg.append(wtochar(name.substr(0, 3)));
 				single_msg.append(">");
-				int div = sending.size() > SINGLE_MSG_SIZE ? SINGLE_MSG_SIZE - single_msg.length() - 6 : sending.size();
+				div = sending.size() > SINGLE_MSG_SIZE ? SINGLE_MSG_SIZE - single_msg.length() - 6 : sending.size();
 				std::stringstream stream3;
 				stream3 << std::hex << div;
 				char _size[4];
@@ -214,7 +236,7 @@ void Pipe::Send() {
 				PushToPipe(single_msg);
 			} while (sending.size() > 0);
 			size++;
-			dataMutex.unlock();
+			muxData.unlock();
 		}
 	}
 }
@@ -227,12 +249,13 @@ void Pipe::Recieve() {
 	{
 		int m_size = 0;
 		//Init message
-		while (!pipeMutex.try_lock());
+		while (!muxPipe.try_lock());
 		bool readres = false;
 		while (exit_code < 0 && !readres) {
 			readres = lpReadFile(hPipe, buffer, SINGLE_MSG_SIZE, &dwRead, NULL);
 		}
-		pipeMutex.unlock();
+		muxPipe.unlock();
+
 		std::string init_message = buffer;
 		if (init_message.find("22ini") != 0)
 			continue;
@@ -246,41 +269,31 @@ void Pipe::Recieve() {
 		stream2 >> _size;
 		int i = 0;
 		std::string message;
-		//char* message = new char[_size * SINGLE_MSG_SIZE];
 		do {
-			while (!pipeMutex.try_lock());
+
+			while (!muxPipe.try_lock());
 			readres = false;
 			while (exit_code < 0 && !readres) {
 				readres = lpReadFile(hPipe, buffer, SINGLE_MSG_SIZE, &dwRead, NULL);
 			}
-			pipeMutex.unlock();
+			muxPipe.unlock();
+
 			if (exit_code >= 0)
 				goto end;
+
 			if (!parsable(buffer, dwRead, &m_size)) {
 				continue;
 			}
-			//memcpy(&message[i * SINGLE_MSG_SIZE], &buffer[11], m_size);
-			//if (m_size < SINGLE_MSG_SIZE)
-			//	message[m_size] = '\0';
 			message.append(std::string(&buffer[11], m_size));
 			i++;
 		} while (i < _size);
-		Messages->push_back({ (DWORD)Messages->size(), false, false, message });
+		PutSingleMessage(message);
 		if (exit_code >= 0)
 			goto end;
 	}
 end:
 	CloseHandle(hPipe);
 	hPipe = nullptr;
-}
-
-void Pipe::AddSingleMessage(std::string message)
-{
-	while (!dataMutex.try_lock());
-	Messages->push_back(msg{ (DWORD)Messages->size(), false, false, message });
-	dataMutex.unlock();
-	std::unique_lock<std::mutex> ul(muxWait);
-	cvBlock.notify_one();
 }
 
 void Pipe::ClearLog()

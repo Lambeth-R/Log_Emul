@@ -48,7 +48,7 @@ public:
 		}
 		return false;
 	}
-	static T* GetInstance(const Key& key, DWORD type)
+	static T* GetInstance(const Key& key, DWORD type = 0)
 	{
 		typename std::map<Key, T*>::iterator it = instances.find(key);
 
@@ -85,11 +85,14 @@ public:
 	// Funcs to access messages
 	std::list<msg> GetLogMessages();
 	void PutLogMessages(std::list<msg> mList);
-	std::list<msg> GetMessages();
+	void PutSingleLogMessage(std::string sMsg);
 	void PutMessages(std::list<msg> mList);
-	void AddSingleMessage(std::string message);
+	void PutSingleMessage(std::string sMsg);
+	std::list<msg> GetMessages();
 	void ClearLog();
 	void SetRightFuncs(True_WriteFile TrueWriteFile, True_ReadFile TrueReadFile);
+	std::condition_variable* cvExtern;
+	std::mutex* muxExtern;
 private:
 	// Acuall WriteFile, ReadFile, for correct pipe work inside dll
 	True_WriteFile lpWriteFile;
@@ -109,11 +112,10 @@ private:
 	void Send();	
 	void Recieve();
 	
-	std::string wtochar(std::wstring string);
 	// Some variables using across class
 	HANDLE hPipe = nullptr;
 	int exit_code;
-	std::mutex pipeMutex, dataMutex, logMutex, muxWait, muxInit;
+	std::mutex muxPipe, muxData, muxLog, muxWait, muxInit;
 	std::condition_variable cvBlock, cvInit;
 	std::wstring name;
 	DWORD type;

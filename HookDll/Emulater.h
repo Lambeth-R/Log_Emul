@@ -20,12 +20,15 @@ class Emulater
 {
 public:
 	COMMANDS CurrentState;
-	std::list<msg> messages;
+	std::list<msg> Messages;
 
 private:
 	bool active = false;
 	Pipe *cPipe = nullptr, *lPipe = nullptr, *ePipe = nullptr;
+	void SyncMsg();
+	void wait(Pipe* Pipe, int size);
 	std::mutex mux_cPipe, mux_lPipe, mux_ePipe;
+	HANDLE hThread;
 public:
 	void SwitchContext(std::string message);
 	void Activate();
