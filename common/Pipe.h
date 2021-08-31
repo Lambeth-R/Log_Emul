@@ -82,15 +82,22 @@ public:
 		DWORD type			// Listen / Emulate
 	);
 	~Pipe();
-	// Funcs to access messages
+	//Get lists funcs
 	std::list<msg> GetLogMessages();
+	std::list<msg> GetMessages();
+
+	// Put log lists
 	void PutLogMessages(std::list<msg> mList);
 	void PutSingleLogMessage(std::string sMsg);
+
+	// Put msg lists
 	void PutMessages(std::list<msg> mList);
 	void PutSingleMessage(std::string sMsg);
-	std::list<msg> GetMessages();
+
 	void ClearLog();
+	//Final init (needed for hook.dll)
 	void SetRightFuncs(True_WriteFile TrueWriteFile, True_ReadFile TrueReadFile);
+	// For thread full chill purposes
 	std::condition_variable* cvExtern;
 	std::mutex* muxExtern;
 private:

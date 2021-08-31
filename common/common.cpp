@@ -34,3 +34,11 @@ std::list<msg>* Div_Messages(char* text, long long length, const char pref[])
 	} while (length > 0);
 	return ResList;
 }
+
+std::string wtochar(std::wstring string)
+{
+	using convert_type = std::codecvt_utf8<wchar_t>;
+	std::wstring_convert<convert_type, wchar_t> converter;
+	std::string res = converter.to_bytes(string);
+	return res;
+}

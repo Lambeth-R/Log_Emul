@@ -10,6 +10,44 @@ BOOL(WINAPI* TrueReadFile)(HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED) = &Read
 BOOL(WINAPI* TrueWriteFile)(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED) = &WriteFile;
 BOOL(WINAPI* TrueCloseHandle)(HANDLE) = &CloseHandle;
 
+//	FunkId
+//	1 - ReadFile
+//	2 -	WriteFile
+//
+//
+//
+
+std::string Custom_Main(int FunkId,std::list<std::stringstream*> FuncStack)
+{
+	std::string res;
+	switch (FunkId)
+	{
+	case 1:
+	{
+		res.append("ReadFile(");
+		break;
+	}
+	case 2:
+	{
+		res.append("WriteFile(");
+		break;
+	}
+	default:
+		break;
+	}
+	for (auto it : FuncStack) {
+		res.append(it->str());
+		res.append("|||");
+	}
+	if (FuncStack.size() >= 1) {
+		res.pop_back();
+		res.pop_back();
+		res.pop_back();
+	}
+	res.append(")");
+	return res;
+}
+
 __declspec(dllexport) BOOL WINAPI CustomReadFile(
 	HANDLE       hFile,
 	LPVOID       lpBuffer,
@@ -21,26 +59,24 @@ __declspec(dllexport) BOOL WINAPI CustomReadFile(
 	Emulater* emulater = Emulater::GetInstance();
 	if (emulater->CurrentState == COMMANDS::Cloggin) {
 		retValue = TrueReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
-		Sleep(10);
-		std::string init_msg = "22log>0003<ini";
-		char msg[256];
-		std::string out;
-		out += "ReadFile(";
-		sprintf(msg, "%p", hFile);
-		out += msg;
-		out += "|||";
-		out += std::string((char*)lpBuffer, *lpNumberOfBytesRead);
-		out += "|||";
-		out += std::to_string(nNumberOfBytesToRead);
-		out += "|||";
-		out += std::to_string(*lpNumberOfBytesRead);
-		out += "|||";
-		out += "NULL";
-		out += ")";
-		Pipe* pipe = Pipe::GetInstance(pipename[1], PIPE_CREATE | PIPE_SEND);
-		pipe->SetRightFuncs(TrueWriteFile, TrueReadFile);
-		//pipe->PutMessages(*Div_Messages((char*)out.c_str(), out.size()));
-		pipe->PutSingleMessage(out);
+		if (retValue) {
+			std::list<std::stringstream*>* lsLog = new std::list<std::stringstream*>;
+			std::stringstream hfStr, lbStr, ntrStr, lorStr, lolStr;
+			hfStr << hFile;
+			lbStr << std::string((char*)lpBuffer, (DWORD)*lpNumberOfBytesRead);
+			ntrStr << nNumberOfBytesToRead;
+			lorStr << (DWORD)*lpNumberOfBytesRead;
+			lolStr << lpOverlapped;
+			lsLog->push_back(&hfStr);
+			lsLog->push_back(&lbStr);
+			lsLog->push_back(&ntrStr);
+			lsLog->push_back(&lorStr);
+			lsLog->push_back(&lolStr);
+			std::string res = Custom_Main(1, *lsLog);
+			Pipe* pipe = Pipe::GetInstance(pipename[1], PIPE_CREATE | PIPE_SEND);
+			pipe->SetRightFuncs(TrueWriteFile, TrueReadFile);
+			pipe->PutSingleMessage(res);
+		}
 	}
 	else
 	if (emulater->CurrentState == COMMANDS::Cemul) {

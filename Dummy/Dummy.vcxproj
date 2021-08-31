@@ -141,13 +141,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\wxGUI\cOut.cpp" />
-    <ClCompile Include="..\wxGUI\sysfunk.cpp" />
     <ClCompile Include="main.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\wxGUI\cOut.h" />
-    <ClInclude Include="..\wxGUI\sysfunk.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -17,6 +17,14 @@ Pipe::Pipe(std::wstring name, DWORD type)
 
 Pipe::~Pipe()
 {
+	if (LogMessages)
+		delete LogMessages;
+	if (Messages)
+		delete Messages;
+	if (muxExtern)
+		delete muxExtern;
+	if (cvExtern)
+		delete cvExtern;
 	exit_code = 0;
 }
 
@@ -147,14 +155,6 @@ void Pipe::Create(std::wstring pName) {
 		1024,
 		NMPWAIT_USE_DEFAULT_WAIT,
 		NULL);
-}
-
-std::string wtochar(std::wstring string)
-{
-	using convert_type = std::codecvt_utf8<wchar_t>;
-	std::wstring_convert<convert_type, wchar_t> converter;
-	std::string res = converter.to_bytes(string);
-	return res;
 }
 
 void Pipe::Connect(std::wstring pName) {
