@@ -3,7 +3,6 @@
 #include "cProcesses.h"
 #include "fProcess.h"
 #include "fLData.h"
-#include "cOut.h"
 
 wxBEGIN_EVENT_TABLE(cMain, wxFrame)
     EVT_BUTTON(FOPENID, cMain::SelectProcess)
@@ -134,17 +133,18 @@ void cMain::MsgSync(int idPipe)
 	if (idPipe == 3) {
 		idPipe = 1;
 		Pipe* pipe = Pipe::GetInstance(pipename[idPipe]);
-		std::list<msg> messages;
+		if (LoadSaveData == nullptr)
+			LoadSaveData = new std::list<msg>;
 		while (sync_exit_code < 0) {
-			wait(pipe, messages.size(),1);
+			wait(pipe, LoadSaveData->size(),1);
 			auto temp = pipe->GetMessages();
 			auto it = temp.begin();
-			std::advance(it, messages.size());
+			std::advance(it, LoadSaveData->size());
 			while (it != temp.end()) {
-				messages.push_back(*it);
+				LoadSaveData->push_back(*it);
 				it++;
 			}
-			for (auto i = messages.begin(); i != messages.end(); i++)
+			for (auto i = LoadSaveData->begin(); i != LoadSaveData->end(); i++)
 			{
 				if (!i._Ptr->_Myval.displayed) {
 					m_recieved_msgs->InsertItem(i._Ptr->_Myval.order, i._Ptr->_Myval.message);
@@ -173,6 +173,9 @@ void cMain::InjectWarp(wxCommandEvent& evt)
 		cPipe->SetRightFuncs(&WriteFile, &ReadFile);
 		m_msg_sync1 = new std::future<void>(std::async(std::launch::async, &cMain::MsgSync, this, 0));
 		Sleep(10);
+		m_recieved_msgs->ClearAll();
+		m_recieved_msgs->Refresh();
+		LoadSaveData->clear();
 	}
 }
 
@@ -250,6 +253,10 @@ void cMain::EmulateMode(wxCommandEvent& evt)
 	ePipe->PutMessages(*LoadSaveData);
 }
 
+std::list<msg>* cMain::GetData() {
+	return LoadSaveData;
+}
+
 void cMList::OnSelected(wxListEvent& event)
 {
 	fLData* linfo = new fLData(this, event.GetItem().m_itemId);
@@ -259,9 +266,16 @@ void cMList::OnSelected(wxListEvent& event)
 void cMain::OnSave(wxCommandEvent& event)
 {
 	Pipe* lPipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_RECIEVE);
-	LoadSaveData = new std::list<msg>(lPipe->GetMessages());
-	cOut out(*LoadSaveData);
-	out.print();
+	//LoadSaveData = new std::list<msg>(lPipe->GetMessages());
+	std::string* fname = new std::string;
+	*fname = "";
+	if (CreateLogFile(*LoadSaveData, fname)) {
+		wxString msg;
+		msg.append("Log file \"");
+		msg.append(*fname);
+		msg.append("\"  was successfully created.");
+		wxMessageBox(msg, "Result", wxOK);
+	}
 }
 
 void cMain::OnLoad(wxCommandEvent& event)
@@ -269,8 +283,15 @@ void cMain::OnLoad(wxCommandEvent& event)
 	wxFileDialog openFileDialog(this, _("Open XYZ file"), "", "", "DAT files (*.DAT)|*.dat", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
 	if (openFileDialog.ShowModal() == wxID_CANCEL)
 		return;     // the user changes his mind...
-	cOut out(openFileDialog.GetPath().c_str().AsChar());
-	LoadSaveData = new std::list<msg>(*out.GetData());
+	LoadSaveData = ReadFromLog(openFileDialog.GetPath().c_str().AsChar());
+	for (auto i : *LoadSaveData)
+	{
+		if (!i.displayed) {
+			m_recieved_msgs->InsertItem(i.order, i.message);
+			i.displayed = true;
+			m_recieved_msgs->Refresh();
+		}
+	}
 }
 
 void cMain::OnExit(wxCommandEvent& event)

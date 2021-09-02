@@ -17,36 +17,8 @@ BOOL(WINAPI* TrueCloseHandle)(HANDLE) = &CloseHandle;
 //
 //
 
-std::string Custom_Main(int FunkId,std::list<std::stringstream*> FuncStack)
-{
-	std::string res;
-	switch (FunkId)
-	{
-	case 1:
-	{
-		res.append("ReadFile(");
-		break;
-	}
-	case 2:
-	{
-		res.append("WriteFile(");
-		break;
-	}
-	default:
-		break;
-	}
-	for (auto it : FuncStack) {
-		res.append(it->str());
-		res.append("|||");
-	}
-	if (FuncStack.size() >= 1) {
-		res.pop_back();
-		res.pop_back();
-		res.pop_back();
-	}
-	res.append(")");
-	return res;
-}
+
+
 
 __declspec(dllexport) BOOL WINAPI CustomReadFile(
 	HANDLE       hFile,
@@ -61,26 +33,45 @@ __declspec(dllexport) BOOL WINAPI CustomReadFile(
 		retValue = TrueReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
 		if (retValue) {
 			std::list<std::stringstream*>* lsLog = new std::list<std::stringstream*>;
-			std::stringstream hfStr, lbStr, ntrStr, lorStr, lolStr;
+			std::stringstream fname, hfStr, lbStr, ntrStr, lorStr, lolStr;
 			hfStr << hFile;
 			lbStr << std::string((char*)lpBuffer, (DWORD)*lpNumberOfBytesRead);
 			ntrStr << nNumberOfBytesToRead;
 			lorStr << (DWORD)*lpNumberOfBytesRead;
 			lolStr << lpOverlapped;
+			fname << "ReadFile";
+			lsLog->push_back(&fname);
 			lsLog->push_back(&hfStr);
 			lsLog->push_back(&lbStr);
 			lsLog->push_back(&ntrStr);
 			lsLog->push_back(&lorStr);
 			lsLog->push_back(&lolStr);
-			std::string res = Custom_Main(1, *lsLog);
+			std::string res = Custom_Create(*lsLog);
 			Pipe* pipe = Pipe::GetInstance(pipename[1], PIPE_CREATE | PIPE_SEND);
 			pipe->SetRightFuncs(TrueWriteFile, TrueReadFile);
 			pipe->PutSingleMessage(res);
 		}
 	}
-	else
-	if (emulater->CurrentState == COMMANDS::Cemul) {
-		Sleep(100);
+	else {
+	//if (emulater->CurrentState == COMMANDS::Cemul) {
+	//	auto it = emulater->Messages.begin();
+	//	std::advance(it, emulater->dCurrMess);
+	//	std::list<std::stringstream*>* restored = new std::list<std::stringstream*>;
+	//	if (Custom_Restore(it->message, restored)) {
+	//		auto itR = restored->begin();
+	//		itR++;
+	//		std::string slpBuffer = itR._Ptr->_Myval->str();
+	//		itR++;
+	//		*itR._Ptr->_Myval >> nNumberOfBytesToRead;
+	//		itR++;
+	//		*itR._Ptr->_Myval >> *lpNumberOfBytesRead;
+	//		if (itR._Ptr->_Myval->str().find("000000000000000") == 0)
+	//			lpOverlapped;
+	//		retValue = true;
+	//	}
+	//	else
+			//Case we failed
+			retValue = TrueReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);		
 	}
 	return retValue;
 }

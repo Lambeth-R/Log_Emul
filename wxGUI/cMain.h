@@ -46,6 +46,7 @@ public:
 	void SetSelected(Process* p);
 	// Get info of selected process for emulate purposes
 	Process GetProcess();
+	std::list<msg>* GetData();
 	// Singletone (Acually useless by now, was used in prev. iterations. But let it be)
 	static cMain* GetInstance();
 	cMain(cMain& other) = delete;

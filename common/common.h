@@ -16,6 +16,16 @@ struct msg {
 extern std::wstring pipename[3];
 std::list<msg>* Div_Messages(char* text, long long length, const char pref[] = "log");
 std::string wtochar(std::wstring string);
+
+long long HexToInt(std::string value);
+std::string IntToHex(long long value);
+std::string Custom_Create(std::list<std::stringstream*> FuncStack);
+bool ParseSingle(std::string orig_message, std::list<std::stringstream*>* result, int* offset);
+std::list<msg>* ParseFile(std::string wholeFile);
+std::string CreateLogText(std::list<msg> lMessages);
+std::list<msg>* ReadFromLog(std::string name);
+bool CreateLogFile(std::list<msg> lMessages, std::string* name);
+
 #endif 
 
 

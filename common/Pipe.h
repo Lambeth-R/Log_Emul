@@ -8,6 +8,7 @@
 #include "../common/common.h"
 
 #define SINGLE_MSG_SIZE 1024
+#define HEADER_SIZE 12
 // Work Type enum
 enum tPipe {
 	PIPE_SEND = 1,

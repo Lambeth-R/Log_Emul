@@ -2,6 +2,7 @@
 #include "contsts.h"
 #include "../common/Pipe.h"
 #include "../common/common.h"
+#include "cMain.h"
 
 fLData::fLData(wxWindow* Parent, long ord) : wxFrame(Parent, wxID_ANY, "Readed info", { (Parent->GetPosition().x + mwind_size.x / 4), (Parent->GetPosition().y - 50) }, pwind_size)
 {
@@ -9,9 +10,8 @@ fLData::fLData(wxWindow* Parent, long ord) : wxFrame(Parent, wxID_ANY, "Readed i
 		return;
 	readed_info = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize,
 		wxTE_READONLY | wxTE_MULTILINE | wxSUNKEN_BORDER);
-	Pipe* pipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_SEND);
-	std::list<msg> messages = pipe->GetMessages();
-	auto it = messages.begin();
+	std::list<msg> lMessages = *cMain::GetInstance()->GetData();
+	auto it = lMessages.begin();
 	std::advance(it, ord);
 	mess = new std::string((*it).message);
 	length_count += 1000;

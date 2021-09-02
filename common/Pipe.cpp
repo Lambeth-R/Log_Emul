@@ -73,7 +73,7 @@ void Pipe::PutMessages(std::list<msg> mList)
 
 void Pipe::PutSingleMessage(std::string sMsg)
 {
-	Messages->push_back( {(DWORD) Messages->size(), false, false, std::string(sMsg)});
+	Messages->push_back( {(DWORD) Messages->size(), false, false, sMsg});
 	std::unique_lock<std::mutex> ul1(muxWait);
 	cvBlock.notify_one();
 	std::unique_lock<std::mutex> ul2(*muxExtern);
@@ -202,7 +202,7 @@ void Pipe::Send() {
 			std::advance(it, size);
 			std::string init_message = "22ini>", message = wtochar(name.substr(0, 3));
 			std::stringstream stream1, stream2;
-			int mcount = ceil((double)it->message.size() / SINGLE_MSG_SIZE);
+			int mcount = ceil((double)it->message.size() / (SINGLE_MSG_SIZE - HEADER_SIZE));
 			stream1 << std::hex << mcount;
 			message.append(stream1.str());
 			stream2 << std::hex << (int)message.size();
@@ -219,7 +219,7 @@ void Pipe::Send() {
 				std::string single_msg = "22";
 				single_msg.append(wtochar(name.substr(0, 3)));
 				single_msg.append(">");
-				div = sending.size() > SINGLE_MSG_SIZE ? SINGLE_MSG_SIZE - single_msg.length() - 6 : sending.size();
+				div = sending.size() > (SINGLE_MSG_SIZE - HEADER_SIZE) ? SINGLE_MSG_SIZE - HEADER_SIZE : sending.size();
 				std::stringstream stream3;
 				stream3 << std::hex << div;
 				char _size[4];

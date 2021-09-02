@@ -23,7 +23,7 @@ void Emulater::SwitchContext(std::string message) {
 
 Emulater::Emulater()
 {
-
+	dCurrMess = 0;
 }
 Emulater::~Emulater()
 {
@@ -46,10 +46,12 @@ void Emulater::SyncMsg()
 		wait(ePipe, Messages.size());
 		auto temp = ePipe->GetMessages();
 		auto it = temp.begin();
-		std::advance(it, Messages.size());
+		std::advance(it, Messages.size());\
 		while (it != temp.end()) {
+			while (!mux_data.try_lock());
 			Messages.push_back(*it);
 			it++;
+			mux_data.unlock();
 		}
 
 	}

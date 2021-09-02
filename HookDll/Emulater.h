@@ -3,7 +3,7 @@
 #pragma once
 
 #include <list>
-#include "Help.h"
+#include <Windows.h>
 #include "../common/common.h"
 #include "../common/Pipe.h"
 
@@ -21,13 +21,13 @@ class Emulater
 public:
 	COMMANDS CurrentState;
 	std::list<msg> Messages;
-
+	DWORD dCurrMess;
 private:
 	bool active = false;
 	Pipe *cPipe = nullptr, *lPipe = nullptr, *ePipe = nullptr;
 	void SyncMsg();
 	void wait(Pipe* Pipe, int size);
-	std::mutex mux_cPipe, mux_lPipe, mux_ePipe;
+	std::mutex mux_cPipe, mux_lPipe, mux_ePipe, mux_data;
 	HANDLE hThread;
 public:
 	void SwitchContext(std::string message);
