@@ -365,4 +365,4 @@ FodyWeavers.xsd
 
 # Copied dll for debug
 wxGUI/injOne.dll
-/wxGUI/Thu_Sep__2_22_38_38_2021.dat
+*.dat
