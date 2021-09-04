@@ -30,9 +30,6 @@
     <ClInclude Include="fProcess.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="sysfunk.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
     <ClInclude Include="fLData.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
@@ -54,9 +51,6 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="fProcess.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
-    <ClCompile Include="sysfunk.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="fLData.cpp">

@@ -175,7 +175,8 @@ void cMain::InjectWarp(wxCommandEvent& evt)
 		Sleep(10);
 		m_recieved_msgs->ClearAll();
 		m_recieved_msgs->Refresh();
-		LoadSaveData->clear();
+		if (LoadSaveData != nullptr)
+			LoadSaveData->clear();
 	}
 }
 

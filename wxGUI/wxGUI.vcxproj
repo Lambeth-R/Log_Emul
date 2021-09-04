@@ -27,7 +27,6 @@
     <ClInclude Include="fProcess.h" />
     <ClInclude Include="MyGUI.h" />
     <ClInclude Include="contsts.h" />
-    <ClInclude Include="sysfunk.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\common\common.cpp" />
@@ -37,7 +36,6 @@
     <ClCompile Include="cProcesses.cpp" />
     <ClCompile Include="fProcess.cpp" />
     <ClCompile Include="MyGUI.cpp" />
-    <ClCompile Include="sysfunk.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

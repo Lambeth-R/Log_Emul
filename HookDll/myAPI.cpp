@@ -18,20 +18,20 @@ BOOL(WINAPI* TrueCloseHandle)(HANDLE) = &CloseHandle;
 //
 
 
-
-
 __declspec(dllexport) BOOL WINAPI CustomReadFile(
 	HANDLE       hFile,
 	LPVOID       lpBuffer,
 	DWORD        nNumberOfBytesToRead,
 	LPDWORD      lpNumberOfBytesRead,
-	LPOVERLAPPED lpOverlapped) {
+	LPOVERLAPPED lpOverlapped)
+{
 	DWORD dwWritten, dwRead;	
 	bool retValue = false;
 	Emulater* emulater = Emulater::GetInstance();
 	if (emulater->CurrentState == COMMANDS::Cloggin) {
 		retValue = TrueReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
-		if (retValue) {
+		if (retValue) 
+		{
 			std::list<std::stringstream*>* lsLog = new std::list<std::stringstream*>;
 			std::stringstream fname, hfStr, lbStr, ntrStr, lorStr, lolStr;
 			hfStr << hFile;
@@ -53,25 +53,37 @@ __declspec(dllexport) BOOL WINAPI CustomReadFile(
 		}
 	}
 	else {
-	//if (emulater->CurrentState == COMMANDS::Cemul) {
-	//	auto it = emulater->Messages.begin();
-	//	std::advance(it, emulater->dCurrMess);
-	//	std::list<std::stringstream*>* restored = new std::list<std::stringstream*>;
-	//	if (Custom_Restore(it->message, restored)) {
-	//		auto itR = restored->begin();
-	//		itR++;
-	//		std::string slpBuffer = itR._Ptr->_Myval->str();
-	//		itR++;
-	//		*itR._Ptr->_Myval >> nNumberOfBytesToRead;
-	//		itR++;
-	//		*itR._Ptr->_Myval >> *lpNumberOfBytesRead;
-	//		if (itR._Ptr->_Myval->str().find("000000000000000") == 0)
-	//			lpOverlapped;
-	//		retValue = true;
-	//	}
-	//	else
-			//Case we failed
-			retValue = TrueReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);		
+		if (emulater->CurrentState == COMMANDS::Cemul) {
+			auto it = emulater->Messages.begin();
+			// Lack of data
+			while (it->displayed == true) {
+				it++;
+				if (it == emulater->Messages.end())					
+					return TrueReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+			}
+			std::list<std::stringstream*>* restored = new std::list<std::stringstream*>;
+			int* offset = new int;
+			*offset = 0;
+			if (ParseSingle(it->message, restored, offset)) {
+				auto itR = restored->begin();
+				itR++;
+				itR++;
+				std::string slpBuffer = itR._Ptr->_Myval->str();
+				itR++;
+				*itR._Ptr->_Myval >> nNumberOfBytesToRead;
+				itR++;
+				*itR._Ptr->_Myval >> *lpNumberOfBytesRead;
+				itR++;
+				if (itR._Ptr->_Myval->str().find("000000000000000") == 0)
+					lpOverlapped;
+				memcpy(lpBuffer, slpBuffer.c_str(), *lpNumberOfBytesRead);
+				it->displayed = true;
+				retValue = true;
+			}
+			else
+				//Case we failed
+				retValue = TrueReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+		}
 	}
 	return retValue;
 }
