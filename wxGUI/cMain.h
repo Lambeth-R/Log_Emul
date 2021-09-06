@@ -13,7 +13,6 @@
 
 #include "contsts.h"
 #include "cProcesses.h"
-#include "sysfunk.h"
 #include "../common/common.h"
 #include "../common/Pipe.h"
 
@@ -57,6 +56,7 @@ private:
 	void OnLoad(wxCommandEvent& event);
 	void OnSave(wxCommandEvent& event);
 	void OnExit(wxCommandEvent& event);
+	void ReinitMSG();
 	// wxListBox -es synchronization func
 	void MsgSync(int idPipe);
 	// Inject exe, (warp acually, never use Inject itself)
@@ -71,17 +71,21 @@ private:
 	// Selected exe inject flag
 	bool injected = false;
 	// Gui handles
+	wxMenu* file_menu = nullptr;
+	wxMenuBar* menu_bar = nullptr;
 	wxButton* m_btn_Inj = nullptr;
 	wxButton* m_btn_sel_file = nullptr;
 	wxListBox* m_Sel_file = nullptr;
-	wxWindow* m_empty = nullptr;
 	wxDirDialog* m_Inj_dial = nullptr;
 	Process* m_pselected = nullptr;
 	cMList* m_recieved_msgs = nullptr;
 	wxListBox* m_log_msgs = nullptr;
-	wxBoxSizer* m_sizer = nullptr;
 	wxButton* m_log_btn = nullptr;
 	wxButton* m_eml_btn = nullptr;
+	wxBoxSizer* m_sizer = nullptr;
+	wxBoxSizer* m_sizer_file = nullptr;
+	wxBoxSizer* m_sizer_left = nullptr;
+	wxBoxSizer* m_sizer_right = nullptr;
 	// MsgSync async handle
 	std::future<void> *m_msg_sync1 = nullptr, * m_msg_sync2 = nullptr, * m_msg_sync3 = nullptr, * m_msg_sync4 = nullptr;
 	std::list<msg>* LoadSaveData = nullptr;

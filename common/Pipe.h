@@ -98,6 +98,8 @@ public:
 	void ClearLog();
 	//Final init (needed for hook.dll)
 	void SetRightFuncs(True_WriteFile TrueWriteFile, True_ReadFile TrueReadFile);
+	// Close Pipe
+	void SetExitCode(int code);
 	// For thread full chill purposes
 	std::condition_variable* cvExtern;
 	std::mutex* muxExtern;

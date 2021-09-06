@@ -12,6 +12,16 @@ __declspec(dllexport) BOOL WINAPI CustomReadFile(
 	LPDWORD      lpNumberOfBytesRead,
 	LPOVERLAPPED lpOverlapped);
 
+__declspec(dllexport) HANDLE WINAPI CustomCreateFileW(
+	LPCWSTR               lpFileName,
+	DWORD                 dwDesiredAccess,
+	DWORD                 dwShareMode,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	DWORD                 dwCreationDisposition,
+	DWORD                 dwFlagsAndAttributes,
+	HANDLE                hTemplateFile
+);
+
 
 extern HANDLE(WINAPI* TrueCreateFileW)(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
 extern BOOL(WINAPI* TrueReadFile)(HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED);

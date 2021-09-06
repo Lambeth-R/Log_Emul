@@ -27,8 +27,11 @@ void fLData::Add_Text()
 {
 	DWORD fstop = 0;
 	std::string to_screen = *mess;
+	//for (auto it = to_screen.begin(); it != to_screen.end();it++) {
+	//	if (*it == '.') 
+	//		*it = '\n';
+	//}
 	DWORD div = 0;
-	std::ostream stream(readed_info);
-	stream << to_screen;
-	stream.flush();
+	wxStreamToTextRedirector redirect(readed_info);
+	std::cout << to_screen;
 }

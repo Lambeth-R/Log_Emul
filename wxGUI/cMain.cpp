@@ -43,30 +43,43 @@ void cMain::SetSelected(Process* p)
 
 cMain::cMain() : wxFrame(nullptr, wxID_ANY, tMain_wind.c_str(), wxPoint((wxDisplay().GetGeometry().GetWidth() - mwind_size.x ) / 2, (wxDisplay().GetGeometry().GetHeight() - mwind_size.x) / 2), wxSize(mwind_size.x,mwind_size.y))
 {
-	wxMenu* file_menu = new wxMenu();
+	file_menu = new wxMenu();
 	file_menu->Append(LOAD, _("&Load"));
 	file_menu->Append(SAVE, _("&Save"));
 	file_menu->AppendSeparator();
 	file_menu->Append(EXIT, "&Exit");
-	wxMenuBar* menu_bar = new wxMenuBar();
+	menu_bar = new wxMenuBar();
 	menu_bar->Append(file_menu, _("&File"));
 	SetMenuBar(menu_bar);
-	m_empty = new wxWindow(this, wxID_ANY, wxPoint(0, 0), mwind_size);
-	m_Inj_dial = new wxDirDialog(m_empty, tDir_Inj.c_str(), "",  wxDD_DIR_MUST_EXIST, wxDefaultPosition, wxSize(400, 25));
-    m_Sel_file = new wxListBox(m_empty, wxID_ANY, wxPoint(20, 20), wxSize(500, 25));
-    m_btn_sel_file = new wxButton(m_empty, FOPENID, "<-", wxPoint(518, 19), wxSize(25, 27));
-    m_btn_Inj = new wxButton(m_empty, INJECTID, tBtn_Inj.c_str(), wxPoint(600, 12), wxSize(150, 40));
-	m_recieved_msgs = new cMList(m_empty, MSG_LIST, wxPoint(20, 80), wxSize(540, 450), wxLC_LIST);
-	m_log_btn = new wxButton(m_empty, LISTEN, tBtn_Log.c_str(), wxPoint(600, 60), wxSize(150, 40));
-	m_eml_btn = new wxButton(m_empty, EMULATE, tBtn_Eml.c_str(), wxPoint(600, 110), wxSize(150, 40));
-	m_log_msgs = new wxListBox(m_empty, wxID_ANY, wxPoint(600, 300), wxSize(150, 200));
+	this->SetBackgroundColour(wxColour(*wxWHITE));
+	m_Inj_dial = new wxDirDialog(this, tDir_Inj.c_str(), "",  wxDD_DIR_MUST_EXIST, wxDefaultPosition, wxSize(400, 25));
+    m_Sel_file = new wxListBox(this, wxID_ANY, wxPoint(30, 20), wxSize(515, 25));
+    m_btn_sel_file = new wxButton(this, FOPENID, "<-", wxPoint(500, 50), wxSize(25, 25));    
+	m_recieved_msgs = new cMList(this, MSG_LIST, wxPoint(20, 80), wxSize(540, 450), wxLC_REPORT);
+	ReinitMSG();
+	m_btn_Inj = new wxButton(this, INJECTID, tBtn_Inj.c_str(), wxPoint(600, 150), wxSize(150, 40));
+	m_log_btn = new wxButton(this, LISTEN, tBtn_Log.c_str(), wxDefaultPosition, wxSize(150, 40));
+	m_eml_btn = new wxButton(this, EMULATE, tBtn_Eml.c_str(), wxDefaultPosition, wxSize(150, 40));
+	m_log_msgs = new wxListBox(this, wxID_ANY, wxDefaultPosition, wxSize(150, 200));
 	sync_exit_code = -1;	
-	//m_sizer = new wxBoxSizer(wxVERTICAL);
-	//m_sizer->Add(m_empty, wxSizerFlags(1).Expand().Border());
-	//m_sizer->Add(m_Inj_dial, wxSizerFlags(2).Expand().Border());
-	//m_sizer->Add(m_Sel_file, wxSizerFlags(3).Expand().Border());
-	//m_sizer->Add(m_btn_sel_file, wxSizerFlags(4).Expand().Border());
-	//m_sizer->Add(m_btn_Inj, wxSizerFlags(5).Expand().Border());
+	// Some positioning stuff
+	m_sizer = new wxBoxSizer(wxHORIZONTAL);
+	m_sizer_file = new wxBoxSizer(wxHORIZONTAL);
+	m_sizer_left = new wxBoxSizer(wxVERTICAL);
+	m_sizer_right = new wxBoxSizer(wxVERTICAL);	
+	m_sizer_file->Add(m_Sel_file,		0);
+	m_sizer_file->Add(m_btn_sel_file,	0);
+	m_sizer_left->Add(m_sizer_file,		0, wxEXPAND | wxALL, 10);
+	m_sizer_left->Add(m_recieved_msgs,	1, wxEXPAND | wxALL, 10);
+	m_sizer->Add(m_sizer_left,			1, wxEXPAND | wxALL, 10);
+	m_sizer_right->Add(m_btn_Inj,		0, wxALL, 3);
+	m_sizer_right->Add(m_log_btn,		0, wxALL, 3);
+	m_sizer_right->Add(m_eml_btn,		0, wxALL, 3);
+	wxPanel* panel_div = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxSize(150, 150));
+	m_sizer_right->Add(panel_div,		0, wxALL);
+	m_sizer_right->Add(m_log_msgs,		1, wxALL, 10);
+	m_sizer->Add(m_sizer_right,			1, wxEXPAND | wxALL, 10);
+	SetSizer(m_sizer);
 	Connect(LOAD, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(cMain::OnLoad));
 	Connect(SAVE, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(cMain::OnSave));
 	Connect(EXIT, wxEVT_COMMAND_MENU_SELECTED,	wxCommandEventHandler(cMain::OnExit));
@@ -76,11 +89,17 @@ cMain::cMain() : wxFrame(nullptr, wxID_ANY, tMain_wind.c_str(), wxPoint((wxDispl
 cMain::~cMain()
 {    
 	sync_exit_code = 0;
-	delete (m_btn_Inj);
-	delete (m_btn_sel_file);
-	delete (m_Sel_file);
-    if(m_Inj_dial) delete (m_Inj_dial);
-	delete (m_empty);
+	delete m_Inj_dial;
+	delete m_recieved_msgs;
+	delete m_log_msgs;
+	std::list<msg> clear;
+	for (int i = 0; i < 3; i++) {
+		clear.push_back({ 0,false,false,"" });
+		Pipe* pipe = Pipe::GetInstance(pipename[i]);
+		pipe->PutMessages(clear);
+		pipe->SetExitCode(0);
+	}
+	if (LoadSaveData) delete LoadSaveData;
 }
 
 void cMain::wait(Pipe* Pipe, int size, int LogMsg = 0)
@@ -116,12 +135,15 @@ void cMain::MsgSync(int idPipe)
 			auto temp = pipe->GetLogMessages();
 			auto it = temp.begin();
 			std::advance(it, messages.size());
-			while (it != temp.end()) {
+			while (it != temp.end() && sync_exit_code < 0) {
 				messages.push_back(*it);
 				it++;
 			}
 			for (auto i = messages.begin(); i != messages.end(); i++)
 			{
+				Sleep(1);
+				if (sync_exit_code > 0)
+					return;
 				if (!i._Ptr->_Myval.displayed) {
 					m_log_msgs->Insert(i._Ptr->_Myval.message, i._Ptr->_Myval.order);
 					i._Ptr->_Myval.displayed = true;
@@ -129,6 +151,7 @@ void cMain::MsgSync(int idPipe)
 				}
 			}
 		}
+		return;
 	}
 	if (idPipe == 3) {
 		idPipe = 1;
@@ -140,25 +163,46 @@ void cMain::MsgSync(int idPipe)
 			auto temp = pipe->GetMessages();
 			auto it = temp.begin();
 			std::advance(it, LoadSaveData->size());
-			while (it != temp.end()) {
+			while (it != temp.end() && sync_exit_code < 0) {
 				LoadSaveData->push_back(*it);
 				it++;
 			}
 			for (auto i = LoadSaveData->begin(); i != LoadSaveData->end(); i++)
 			{
+				Sleep(1);
+				if (sync_exit_code > 0)
+					return;
 				if (!i._Ptr->_Myval.displayed) {
-					m_recieved_msgs->InsertItem(i._Ptr->_Myval.order, i._Ptr->_Myval.message);
+					if (i._Ptr->_Myval.message._Equal(""))
+						continue;
+					m_recieved_msgs->InsertItem(i._Ptr->_Myval.order, i._Ptr->_Myval.message,0);
 					i._Ptr->_Myval.displayed = true;
 					m_recieved_msgs->Refresh();
 				}
 			}
 		}
+		return;
 	}
 }
 
 Process cMain::GetProcess()
 {
 	return *m_pselected;
+}
+
+void cMain::ReinitMSG() {
+	m_recieved_msgs->ClearAll();
+	wxListItem itemCol;
+	itemCol.SetText("Column 1");
+	itemCol.SetImage(-1);
+	m_recieved_msgs->InsertColumn(0, itemCol);	
+	int* w = new int;
+	int* h = new int;
+	m_recieved_msgs->GetSize(w, h);
+	m_recieved_msgs->SetColumnWidth(0, *w);
+	m_recieved_msgs->Refresh();
+	delete w;
+	delete h;
 }
 
 void cMain::InjectWarp(wxCommandEvent& evt)
@@ -173,8 +217,7 @@ void cMain::InjectWarp(wxCommandEvent& evt)
 		cPipe->SetRightFuncs(&WriteFile, &ReadFile);
 		m_msg_sync1 = new std::future<void>(std::async(std::launch::async, &cMain::MsgSync, this, 0));
 		Sleep(10);
-		m_recieved_msgs->ClearAll();
-		m_recieved_msgs->Refresh();
+		ReinitMSG();
 		if (LoadSaveData != nullptr)
 			LoadSaveData->clear();
 	}

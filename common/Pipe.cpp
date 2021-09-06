@@ -2,6 +2,8 @@
 #include <codecvt>
 #include "Pipe.h"
 
+// TODO Close pipe messages
+
 Pipe::Pipe(std::wstring name, DWORD type)
 {
 	exit_code = -1;
@@ -26,6 +28,10 @@ Pipe::~Pipe()
 	if (cvExtern)
 		delete cvExtern;
 	exit_code = 0;
+}
+
+void Pipe::SetExitCode(int code) {
+	exit_code = code;
 }
 
 std::list<msg> Pipe::GetLogMessages()
@@ -244,7 +250,6 @@ void Pipe::Send() {
 void Pipe::Recieve() {
 	char buffer[1024];
 	DWORD dwRead;
-
 	while (exit_code < 0)
 	{
 		int m_size = 0;
@@ -255,7 +260,8 @@ void Pipe::Recieve() {
 			readres = lpReadFile(hPipe, buffer, SINGLE_MSG_SIZE, &dwRead, NULL);
 		}
 		muxPipe.unlock();
-
+		if (exit_code > 0)
+			return;
 		std::string init_message = buffer;
 		if (init_message.find("22ini") != 0)
 			continue;
@@ -303,6 +309,8 @@ void Pipe::ClearLog()
 
 void Pipe::SetRightFuncs(True_WriteFile TrueWriteFile, True_ReadFile TrueReadFile)
 {
+	if (correct_init == true)
+		return;
 	lpWriteFile = TrueWriteFile;
 	lpReadFile = TrueReadFile;
 	correct_init = true;

@@ -87,3 +87,47 @@ __declspec(dllexport) BOOL WINAPI CustomReadFile(
 	}
 	return retValue;
 }
+
+__declspec(dllexport) HANDLE WINAPI CustomCreateFileW(
+	LPCWSTR               lpFileName,
+	DWORD                 dwDesiredAccess,
+	DWORD                 dwShareMode,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	DWORD                 dwCreationDisposition,
+	DWORD                 dwFlagsAndAttributes,
+	HANDLE                hTemplateFile
+)
+{
+	HANDLE result = TrueCreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+	Emulater* emulater = Emulater::GetInstance();
+	if (emulater->CurrentState == COMMANDS::Cloggin) {
+		if (result)
+		{
+			std::list<std::stringstream*>* lsLog = new std::list<std::stringstream*>;
+			std::stringstream fname, sHndl, slpfname, sdDA, sSM, slpSA, dCD, dFAA, shTF;
+			fname << "CreateFileW";
+			slpfname << ws2s(lpFileName);
+			sHndl << result;
+			sdDA << dwDesiredAccess;
+			sSM << dwShareMode;
+			slpSA << lpSecurityAttributes;
+			dCD << dwCreationDisposition;
+			dFAA << dwFlagsAndAttributes;
+			shTF << hTemplateFile;
+			lsLog->push_back(&fname);
+			lsLog->push_back(&sHndl);
+			lsLog->push_back(&slpfname);
+			lsLog->push_back(&sdDA);
+			lsLog->push_back(&sSM);
+			lsLog->push_back(&slpSA);
+			lsLog->push_back(&dCD);
+			lsLog->push_back(&dFAA);
+			lsLog->push_back(&shTF);
+			std::string res = Custom_Create(*lsLog);
+			Pipe* pipe = Pipe::GetInstance(pipename[1], PIPE_CREATE | PIPE_SEND);
+			pipe->SetRightFuncs(TrueWriteFile, TrueReadFile);
+			pipe->PutSingleMessage(res);
+		}
+	}
+	return result;
+}

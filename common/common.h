@@ -26,6 +26,9 @@ std::string CreateLogText(std::list<msg> lMessages);
 std::list<msg>* ReadFromLog(std::string name);
 bool CreateLogFile(std::list<msg> lMessages, std::string* name);
 
+std::string ws2s(const std::wstring& wstr);
+std::wstring s2ws(const std::string& str);
+
 #endif 
 
 

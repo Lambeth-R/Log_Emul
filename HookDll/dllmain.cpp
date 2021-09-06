@@ -57,6 +57,7 @@ BOOL WINAPI DllMain(HMODULE hModule,
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
 		DWORD err = DetourAttach((PVOID*)&TrueReadFile, &CustomReadFile);
+		err = DetourAttach((PVOID*)&TrueCreateFileW, &CustomCreateFileW);
 		DetourTransactionCommit();
 		break;
 	}
