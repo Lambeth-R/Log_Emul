@@ -36,6 +36,21 @@ int WINAPI HookThread(HMODULE hModule)
 		if (temp.size() > messages.size())
 		{
 			readed_msg = temp.back().message;
+			if (readed_msg[0] == '!') {
+				//std::unique_lock<std::mutex> ul(*cPipe->muxExit);
+				emulater->CloseOtherSide();
+				cPipe->SetExitCode(0);				
+				//cPipe->cvExit->wait(ul);
+				DetourTransactionBegin();
+				DetourUpdateThread(GetCurrentThread());
+				DWORD	err = DetourDetach((PVOID*)&TrueCreateFileW,	&CustomCreateFileW);
+						err = DetourDetach((PVOID*)&TrueReadFile,		&CustomReadFile);
+						err = DetourDetach((PVOID*)&TrueWriteFile,		&CustomWriteFile);
+						err = DetourDetach((PVOID*)&TrueCloseHandle,	&CustomCloseHandle);
+				DetourTransactionCommit();
+				FreeLibrary(selfModuleHandle);
+				return 0;
+			}
 			emulater->SwitchContext(readed_msg);
 			messages.push_back(temp.back());
 		}
@@ -56,16 +71,18 @@ BOOL WINAPI DllMain(HMODULE hModule,
 		CreateThread(0, 0, (LPTHREAD_START_ROUTINE)HookThread, hModule, 0, 0);
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
-		DWORD err = DetourAttach((PVOID*)&TrueReadFile, &CustomReadFile);
-		err = DetourAttach((PVOID*)&TrueCreateFileW, &CustomCreateFileW);
+		DWORD err =  DetourAttach((PVOID*)&TrueCreateFileW, &CustomCreateFileW);
+		err = DetourAttach((PVOID*)&TrueReadFile, &CustomReadFile);
+		err = DetourAttach((PVOID*)&TrueWriteFile, &CustomWriteFile);
+		err = DetourAttach((PVOID*)&TrueCloseHandle, &CustomCloseHandle);
 		DetourTransactionCommit();
 		break;
 	}
 	case DLL_THREAD_ATTACH:
 		break;
-	case DLL_THREAD_DETACH:
+	case DLL_THREAD_DETACH:		
 		break;
-	case DLL_PROCESS_DETACH:
+	case DLL_PROCESS_DETACH:		
 		break;
 	}
 	return TRUE;

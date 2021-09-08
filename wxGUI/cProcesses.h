@@ -26,6 +26,7 @@ public:
 	std::list<Process> process;
 	// Singletone
 	static cProcesses* GetInstance();
+	static void Destroy();
 	cProcesses(cProcesses& other) = delete;
 	void operator=(const cProcesses&) = delete;
 private:

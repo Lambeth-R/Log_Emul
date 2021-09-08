@@ -9,25 +9,17 @@ Pipe::Pipe(std::wstring name, DWORD type)
 	exit_code = -1;
 	this->name = name;
 	this->type = type;
-	LogMessages = new std::list<msg>;
-	Messages = new std::list<msg>;
-	muxExtern = new std::mutex;
-	cvExtern = new std::condition_variable;
 	//Here was useless init of ReadFile / Writefile from kernel32. Useless cos that pointers is exactly what was changed. Now need to use SetRightFuncs
 	hThread = new std::future<void>(std::async(std::launch::async, &Pipe::WorkThread, this));
+	exit = false;
 }
 
 Pipe::~Pipe()
-{
-	if (LogMessages)
-		delete LogMessages;
-	if (Messages)
-		delete Messages;
-	if (muxExtern)
-		delete muxExtern;
-	if (cvExtern)
-		delete cvExtern;
+{	
 	exit_code = 0;
+	cvBlock.notify_one();
+	if (correct_init)
+		while (!exit);
 }
 
 void Pipe::SetExitCode(int code) {
@@ -36,18 +28,12 @@ void Pipe::SetExitCode(int code) {
 
 std::list<msg> Pipe::GetLogMessages()
 {
-	while (!muxLog.try_lock());
-	std::list<msg> TempResult = *LogMessages;
-	muxLog.unlock();
-	return TempResult;
+	return LogMessages;
 }
 
 std::list<msg> Pipe::GetMessages()
 {
-	while (!muxData.try_lock());
-	std::list<msg> TempResult = *Messages;
-	muxData.unlock();
-	return TempResult;
+	return Messages;
 }
 
 void Pipe::PutLogMessages(std::list<msg> mList)
@@ -61,11 +47,11 @@ void Pipe::PutLogMessages(std::list<msg> mList)
 
 void Pipe::PutSingleLogMessage(std::string sMsg)
 {
-	LogMessages->push_back({ (DWORD)LogMessages->size(), false, false, std::string(sMsg) });
+	LogMessages.push_back({ (DWORD)LogMessages.size(), false, false, std::string(sMsg) });
 	std::unique_lock<std::mutex> ul1(muxWait);
 	cvBlock.notify_one();
-	std::unique_lock<std::mutex> ul2(*muxExtern);
-	cvExtern->notify_one();
+	std::unique_lock<std::mutex> ul2(muxExtern);
+	cvExtern.notify_one();
 }
 
 void Pipe::PutMessages(std::list<msg> mList)
@@ -79,15 +65,17 @@ void Pipe::PutMessages(std::list<msg> mList)
 
 void Pipe::PutSingleMessage(std::string sMsg)
 {
-	Messages->push_back( {(DWORD) Messages->size(), false, false, sMsg});
+	Messages.push_back( {(DWORD) Messages.size(), false, false, sMsg});
 	std::unique_lock<std::mutex> ul1(muxWait);
 	cvBlock.notify_one();
-	std::unique_lock<std::mutex> ul2(*muxExtern);
-	cvExtern->notify_one();
+	std::unique_lock<std::mutex> ul2(muxExtern);
+	cvExtern.notify_one();
 }
 
 void Pipe::WorkThread()
 {
+	if (this->type == 0 || this->type > 256)
+		return;
 	if (!correct_init) {
 		std::unique_lock<std::mutex> ul(muxInit);
 		cvInit.wait(ul);
@@ -97,7 +85,6 @@ void Pipe::WorkThread()
 	DWORD err = 0;
 	std::wstring pName = L"\\\\.\\pipe\\";
 	pName.append(this->name.c_str());
-	while (!(this->type > 0));
 	switch (this->type)
 	{
 	case (PIPE_SEND | PIPE_CREATE): {
@@ -123,14 +110,18 @@ void Pipe::WorkThread()
 	default:
 		break;
 	}
-
+	exit = true;
 }
 
 bool Pipe::PushToPipe(std::string mToSend) {
 	DWORD dwWritten;
 	if (mToSend.size() == 0) return false;
 	while (!muxPipe.try_lock());
-	bool res = lpWriteFile(hPipe, mToSend.c_str(), SINGLE_MSG_SIZE, &dwWritten, NULL);
+	bool res = false;
+	if (exit_code < 0)
+		res = lpWriteFile(hPipe, mToSend.c_str(), SINGLE_MSG_SIZE, &dwWritten, NULL);
+	else
+		res = WriteFile(hPipe, mToSend.c_str(), SINGLE_MSG_SIZE, &dwWritten, NULL);
 	muxPipe.unlock();
 	return res;
 }
@@ -173,14 +164,14 @@ void Pipe::Connect(std::wstring pName) {
 	}
 	while (!muxLog.try_lock());
 	char buffer[1024];
-	sprintf(buffer, "Pipe %X %s connected!!!\0", hPipe, wtochar(pName).c_str());
+	sprintf(buffer, "Pipe %X %s connected!!!\0", hPipe, ws2s(pName).c_str());
 	PutSingleLogMessage(buffer);
 	muxLog.unlock();
 }
 
 void Pipe::wait(int size)
 {
-	while (!(Messages->size() > size))
+	while (exit_code < 0 && !(Messages.size() > size))
 	{
 		std::unique_lock<std::mutex> ul(muxWait);
 		cvBlock.wait(ul);
@@ -201,12 +192,12 @@ void Pipe::Send() {
 	{
 		Sleep(10);
 		wait(size);
-		while (Messages->size() > size)
+		while (Messages.size() > size)
 		{
 			while (!muxData.try_lock());
-			auto it = Messages->begin();
+			auto it = Messages.begin();
 			std::advance(it, size);
-			std::string init_message = "22ini>", message = wtochar(name.substr(0, 3));
+			std::string init_message = "22ini>", message = ws2s(name.substr(0, 3));
 			std::stringstream stream1, stream2;
 			int mcount = ceil((double)it->message.size() / (SINGLE_MSG_SIZE - HEADER_SIZE));
 			stream1 << std::hex << mcount;
@@ -223,7 +214,7 @@ void Pipe::Send() {
 			std::string sending = it->message;
 			do {
 				std::string single_msg = "22";
-				single_msg.append(wtochar(name.substr(0, 3)));
+				single_msg.append(ws2s(name.substr(0, 3)));
 				single_msg.append(">");
 				div = sending.size() > (SINGLE_MSG_SIZE - HEADER_SIZE) ? SINGLE_MSG_SIZE - HEADER_SIZE : sending.size();
 				std::stringstream stream3;
@@ -243,8 +234,13 @@ void Pipe::Send() {
 			} while (sending.size() > 0);
 			size++;
 			muxData.unlock();
+			if (exit_code >= 0)
+				goto end;
 		}
 	}
+end:
+	CloseHandle(hPipe);
+	hPipe = nullptr;
 }
 
 void Pipe::Recieve() {
@@ -274,19 +270,21 @@ void Pipe::Recieve() {
 		stream2 << std::hex << init_message.substr(init_message.find("<") + 4, _size);
 		stream2 >> _size;
 		int i = 0;
+
 		std::string message;
 		do {
-
 			while (!muxPipe.try_lock());
 			readres = false;
 			while (exit_code < 0 && !readres) {
 				readres = lpReadFile(hPipe, buffer, SINGLE_MSG_SIZE, &dwRead, NULL);
 			}
-			muxPipe.unlock();
-
+			muxPipe.unlock();				
+			if (buffer[11] == '!' && _size == 1) {
+				PutSingleMessage("!");
+				goto end;
+			}
 			if (exit_code >= 0)
 				goto end;
-
 			if (!parsable(buffer, dwRead, &m_size)) {
 				continue;
 			}
@@ -304,7 +302,7 @@ end:
 
 void Pipe::ClearLog()
 {
-	LogMessages->clear();
+	LogMessages.clear();
 }
 
 void Pipe::SetRightFuncs(True_WriteFile TrueWriteFile, True_ReadFile TrueReadFile)

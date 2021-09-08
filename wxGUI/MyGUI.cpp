@@ -10,6 +10,7 @@ MyGUI::MyGUI()
 
 MyGUI::~MyGUI()
 {
+
 }
 
 bool MyGUI::OnInit()

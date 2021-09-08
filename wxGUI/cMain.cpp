@@ -20,8 +20,8 @@ wxEND_EVENT_TABLE()
 
 void cMain::SelectProcess(wxCommandEvent& evt)
 {
-	cProcesses* c = cProcesses::GetInstance();
-	c->Refresh();
+	procs = cProcesses::GetInstance();
+	procs->Refresh();
 	fProcess* fpFrame = new fProcess(this);
 	fpFrame->Show(true);
 }
@@ -90,33 +90,49 @@ cMain::~cMain()
 {    
 	sync_exit_code = 0;
 	delete m_Inj_dial;
+	m_recieved_msgs->ClearAll();
 	delete m_recieved_msgs;
+	m_log_msgs->Clear();
 	delete m_log_msgs;
-	std::list<msg> clear;
+	//std::list<msg> clear;
 	for (int i = 0; i < 3; i++) {
-		clear.push_back({ 0,false,false,"" });
-		Pipe* pipe = Pipe::GetInstance(pipename[i]);
-		pipe->PutMessages(clear);
-		pipe->SetExitCode(0);
+		//clear.push_back({ 0,false,false,"" });
+		Pipe* pipe = Pipe::GetInstance(pipename[i], 0);
+		pipe->PutSingleMessage("!");
+		pipe->cvExtern.notify_one();
+		//pipe->PutMessages(clear);
+		pipe->SetExitCode(0);				
+		delete pipe;
 	}
-	if (LoadSaveData) delete LoadSaveData;
+	if (procs)
+		procs->Destroy();
+	if (m_msg_sync1) 
+		delete m_msg_sync1;
+	if (m_msg_sync2) 
+		delete m_msg_sync2;
+	if (m_msg_sync3) 
+		delete m_msg_sync3;
+	if (m_msg_sync4) 
+		delete m_msg_sync4;
+	if (m_pselected)
+		delete m_pselected;
 }
 
 void cMain::wait(Pipe* Pipe, int size, int LogMsg = 0)
 {
 	if (LogMsg == 0) {
-		while (!(Pipe->GetLogMessages().size() > size))
+		while (sync_exit_code < 0 && !(Pipe->GetLogMessages().size() > size))
 		{
-			std::unique_lock<std::mutex> ul(*Pipe->muxExtern);
-			Pipe->cvExtern->wait(ul);
+			std::unique_lock<std::mutex> ul(Pipe->muxExtern);
+			Pipe->cvExtern.wait(ul);
 		}
 		return;
 	}
 	if (LogMsg == 1) {
-		while (!(Pipe->GetMessages().size() > size))
+		while (sync_exit_code < 0 && !(Pipe->GetMessages().size() > size))
 		{
-			std::unique_lock<std::mutex> ul(*Pipe->muxExtern);
-			Pipe->cvExtern->wait(ul);
+			std::unique_lock<std::mutex> ul(Pipe->muxExtern);
+			Pipe->cvExtern.wait(ul);
 		}
 		return;
 	}
@@ -132,6 +148,8 @@ void cMain::MsgSync(int idPipe)
 		std::list<msg> messages;
 		while (sync_exit_code < 0) {
 			wait(pipe, messages.size());
+			if (sync_exit_code >= 0)
+				return;
 			auto temp = pipe->GetLogMessages();
 			auto it = temp.begin();
 			std::advance(it, messages.size());
@@ -156,21 +174,21 @@ void cMain::MsgSync(int idPipe)
 	if (idPipe == 3) {
 		idPipe = 1;
 		Pipe* pipe = Pipe::GetInstance(pipename[idPipe]);
-		if (LoadSaveData == nullptr)
-			LoadSaveData = new std::list<msg>;
 		while (sync_exit_code < 0) {
-			wait(pipe, LoadSaveData->size(),1);
+			wait(pipe, LoadSaveData.size(),1);
+			if (sync_exit_code >= 0)
+				return;
 			auto temp = pipe->GetMessages();
 			auto it = temp.begin();
-			std::advance(it, LoadSaveData->size());
+			std::advance(it, LoadSaveData.size());
 			while (it != temp.end() && sync_exit_code < 0) {
-				LoadSaveData->push_back(*it);
+				LoadSaveData.push_back(*it);
 				it++;
 			}
-			for (auto i = LoadSaveData->begin(); i != LoadSaveData->end(); i++)
+			for (auto i = LoadSaveData.begin(); i != LoadSaveData.end(); i++)
 			{
 				Sleep(1);
-				if (sync_exit_code > 0)
+				if (sync_exit_code >= 0)
 					return;
 				if (!i._Ptr->_Myval.displayed) {
 					if (i._Ptr->_Myval.message._Equal(""))
@@ -218,8 +236,8 @@ void cMain::InjectWarp(wxCommandEvent& evt)
 		m_msg_sync1 = new std::future<void>(std::async(std::launch::async, &cMain::MsgSync, this, 0));
 		Sleep(10);
 		ReinitMSG();
-		if (LoadSaveData != nullptr)
-			LoadSaveData->clear();
+		if (LoadSaveData.size() > 0)
+			LoadSaveData.clear();
 	}
 }
 
@@ -285,7 +303,7 @@ void cMain::EmulateMode(wxCommandEvent& evt)
 		return;
 	if (m_pselected == NULL)
 		return;
-	if (LoadSaveData == nullptr)
+	if (LoadSaveData.size() == 0)
 		return;
 	Pipe* cPipe = Pipe::GetInstance(pipename[0]);
 	Pipe* ePipe = Pipe::GetInstance(pipename[2], PIPE_CONNECT | PIPE_SEND);
@@ -294,11 +312,11 @@ void cMain::EmulateMode(wxCommandEvent& evt)
 		m_msg_sync3 = new std::future<void>(std::async(std::launch::async, &cMain::MsgSync, this, 2));
 	Sleep(10);
 	cPipe->PutSingleMessage("eml");
-	ePipe->PutMessages(*LoadSaveData);
+	ePipe->PutMessages(LoadSaveData);
 }
 
 std::list<msg>* cMain::GetData() {
-	return LoadSaveData;
+	return &LoadSaveData;
 }
 
 void cMList::OnSelected(wxListEvent& event)
@@ -310,13 +328,11 @@ void cMList::OnSelected(wxListEvent& event)
 void cMain::OnSave(wxCommandEvent& event)
 {
 	Pipe* lPipe = Pipe::GetInstance(pipename[1], PIPE_CONNECT | PIPE_RECIEVE);
-	//LoadSaveData = new std::list<msg>(lPipe->GetMessages());
-	std::string* fname = new std::string;
-	*fname = "";
-	if (CreateLogFile(*LoadSaveData, fname)) {
+	std::string fname = "";
+	if (CreateLogFile(LoadSaveData, &fname)) {
 		wxString msg;
 		msg.append("Log file \"");
-		msg.append(*fname);
+		msg.append(fname);
 		msg.append("\"  was successfully created.");
 		wxMessageBox(msg, "Result", wxOK);
 	}
@@ -327,8 +343,8 @@ void cMain::OnLoad(wxCommandEvent& event)
 	wxFileDialog openFileDialog(this, _("Open XYZ file"), "", "", "DAT files (*.DAT)|*.dat", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
 	if (openFileDialog.ShowModal() == wxID_CANCEL)
 		return;     // the user changes his mind...
-	LoadSaveData = ReadFromLog(openFileDialog.GetPath().c_str().AsChar());
-	for (auto i : *LoadSaveData)
+	LoadSaveData = *ReadFromLog(openFileDialog.GetPath().c_str().AsChar());
+	for (auto i : LoadSaveData)
 	{
 		if (!i.displayed) {
 			m_recieved_msgs->InsertItem(i.order, i.message);
@@ -350,6 +366,11 @@ cMain* cMain::GetInstance()
 		cmain = new cMain;
 	}
 	return cmain;
+}
+
+void cMain::Destroy()
+{
+	delete cmain;
 }
 
 cMain* cMain::cmain = nullptr;

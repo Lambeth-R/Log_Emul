@@ -101,8 +101,8 @@ public:
 	// Close Pipe
 	void SetExitCode(int code);
 	// For thread full chill purposes
-	std::condition_variable* cvExtern;
-	std::mutex* muxExtern;
+	std::condition_variable cvExtern;
+	std::mutex muxExtern;
 private:
 	// Acuall WriteFile, ReadFile, for correct pipe work inside dll
 	True_WriteFile lpWriteFile;
@@ -125,17 +125,19 @@ private:
 	// Some variables using across class
 	HANDLE hPipe = nullptr;
 	int exit_code;
-	std::mutex muxPipe, muxData, muxLog, muxWait, muxInit;
+	std::mutex muxPipe, muxData, muxLog, muxWait, muxInit, muxExit;
 	std::condition_variable cvBlock, cvInit;
+	std::condition_variable cvExit;
 	std::wstring name;
 	DWORD type;
 	DWORD error;
 	std::string keyword;
+	bool exit;
 
 	// Connect log 
-	std::list<msg>* LogMessages;
+	std::list<msg> LogMessages;
 	// Listined data
-	std::list<msg>* Messages;
+	std::list<msg> Messages;
 	// Pipe Send / Reiceve thread
 	std::future<void>* hThread = nullptr;
 };

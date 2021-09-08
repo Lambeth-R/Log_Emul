@@ -5,12 +5,7 @@
 #include <Windows.h>
 
 
-__declspec(dllexport) BOOL WINAPI CustomReadFile(
-	HANDLE       hFile,
-	LPVOID       lpBuffer,
-	DWORD        nNumberOfBytesToRead,
-	LPDWORD      lpNumberOfBytesRead,
-	LPOVERLAPPED lpOverlapped);
+
 
 __declspec(dllexport) HANDLE WINAPI CustomCreateFileW(
 	LPCWSTR               lpFileName,
@@ -21,7 +16,23 @@ __declspec(dllexport) HANDLE WINAPI CustomCreateFileW(
 	DWORD                 dwFlagsAndAttributes,
 	HANDLE                hTemplateFile
 );
+__declspec(dllexport) BOOL WINAPI CustomReadFile(
+	HANDLE       hFile,
+	LPVOID       lpBuffer,
+	DWORD        nNumberOfBytesToRead,
+	LPDWORD      lpNumberOfBytesRead,
+	LPOVERLAPPED lpOverlapped
+);
 
+__declspec(dllexport) BOOL WINAPI CustomWriteFile(
+	HANDLE       hFile,
+	LPVOID       lpBuffer,
+	DWORD        nNumberOfBytesToRead,
+	LPDWORD      lpNumberOfBytesRead,
+	LPOVERLAPPED lpOverlapped
+);
+
+__declspec(dllexport) BOOL WINAPI CustomCloseHandle(HANDLE hObject);
 
 extern HANDLE(WINAPI* TrueCreateFileW)(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
 extern BOOL(WINAPI* TrueReadFile)(HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED);

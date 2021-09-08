@@ -59,4 +59,9 @@ cProcesses* cProcesses::GetInstance()
     return cprocesses;
 }
 
+void cProcesses::Destroy()
+{
+    delete cprocesses;
+}
+
 cProcesses* cProcesses::cprocesses = nullptr;

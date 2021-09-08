@@ -15,12 +15,13 @@ enum class COMMANDS {
 
 extern BOOL(WINAPI* TrueReadFile)(HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED);
 extern BOOL(WINAPI* TrueWriteFile)(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED);
+typedef std::map<std::string, std::list<msg>*> My_Map;
 
 class Emulater
 {
 public:
 	COMMANDS CurrentState;
-	std::list<msg> Messages;
+	My_Map messages;
 	DWORD dCurrMess;
 private:
 	bool active = false;
@@ -31,6 +32,7 @@ private:
 	HANDLE hThread;
 public:
 	void SwitchContext(std::string message);
+	void CloseOtherSide();
 	void Activate();
 	static Emulater* GetInstance();
 	Emulater(Emulater& other) = delete;

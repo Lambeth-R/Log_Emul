@@ -48,6 +48,7 @@ public:
 	std::list<msg>* GetData();
 	// Singletone (Acually useless by now, was used in prev. iterations. But let it be)
 	static cMain* GetInstance();
+	static void Destroy();
 	cMain(cMain& other) = delete;
 	void operator=(const cMain&) = delete;
 
@@ -86,9 +87,10 @@ private:
 	wxBoxSizer* m_sizer_file = nullptr;
 	wxBoxSizer* m_sizer_left = nullptr;
 	wxBoxSizer* m_sizer_right = nullptr;
+	cProcesses* procs = nullptr;
 	// MsgSync async handle
 	std::future<void> *m_msg_sync1 = nullptr, * m_msg_sync2 = nullptr, * m_msg_sync3 = nullptr, * m_msg_sync4 = nullptr;
-	std::list<msg>* LoadSaveData = nullptr;
+	std::list<msg> LoadSaveData;
 	//std::list<sysfunk> funks_data;
 	// MsgSync exit code
 	int sync_exit_code;

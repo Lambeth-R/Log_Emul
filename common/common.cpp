@@ -6,44 +6,6 @@
 
 std::wstring pipename[] = { L"cmd_pipe",L"log_pipe",L"eml_pipe" };
 
-std::list<msg>* Div_Messages(char* text, long long length, const char pref[])
-{
-	std::list<msg>* ResList = new std::list<msg>;
-	do
-	{
-		std::string single_msg;
-		single_msg.append("22");
-		single_msg.append(pref);
-		single_msg.append(">");
-		std::stringstream stream1;
-		int div = length > SINGLE_MSG_SIZE ? SINGLE_MSG_SIZE - single_msg.length() - 6 : length;
-		stream1 << std::hex << div;
-		char _size[4];
-		memset(_size, 48, 4 * sizeof(char));
-		int off = 0;
-		if (div < 16) off = 3;
-		else if (div < 256) off = 2;
-		else if (div < 4096) off = 1;
-		memcpy(&_size[off], stream1.str().c_str(), sizeof(char) * (4 - off));
-		single_msg.append(_size, 4);
-		single_msg.append("<");
-		single_msg.append(text, div);
-		memset(text, 0, sizeof(char) * div);
-		memcpy(text, &text[div], sizeof(char) * (length - div));
-		length -= div;
-		ResList->push_back({ (DWORD)ResList->size(),false,false,single_msg });
-	} while (length > 0);
-	return ResList;
-}
-
-std::string wtochar(std::wstring string)
-{
-	using convert_type = std::codecvt_utf8<wchar_t>;
-	std::wstring_convert<convert_type, wchar_t> converter;
-	std::string res = converter.to_bytes(string);
-	return res;
-}
-
 long long HexToInt(std::string value)
 {
 	long long result;
@@ -64,21 +26,6 @@ std::string IntToHex(long long value)
 std::string Custom_Create(std::list<std::stringstream*> FuncStack)
 {
 	std::string res;
-	//switch (FunkId)
-	//{
-	//case 1:
-	//{
-	//	res.append("ReadFile(");
-	//	break;
-	//}
-	//case 2:
-	//{
-	//	res.append("WriteFile(");
-	//	break;
-	//}
-	//default:
-	//	break;
-	//}
 	res.append(IntToHex(FuncStack.size()));
 	res.append(".");
 	for (auto it : FuncStack) {
@@ -88,6 +35,7 @@ std::string Custom_Create(std::list<std::stringstream*> FuncStack)
 		res.append(".");
 	}
 	res.append(".");
+	FuncStack.clear();
 	return res;
 }
 
@@ -130,9 +78,13 @@ std::list<msg>* ParseFile(std::string wholeFile)
 			if (ParseSingle(wholeFile, record, offset)) {
 				wholeFile = wholeFile.substr(*offset+1);
 				readedData->push_back({ (DWORD)readedData->size(), false, false, Custom_Create(*record) });
+				delete record;
 			}
-			else
+			else {
+				delete record;
 				return readedData;
+			}
+			
 		}
 	}
 	return readedData;
@@ -163,7 +115,7 @@ std::string CreateLogText(std::list<msg> lMessages) {
 }
 //Call to read file
 std::list<msg>* ReadFromLog(std::string name) {
-	std::string* wholeFile = new std::string;
+	std::string wholeFile;
 	std::ifstream file(name, std::ios::in | std::ios::binary);
 	if (!file)
 		return nullptr;
@@ -172,11 +124,11 @@ std::list<msg>* ReadFromLog(std::string name) {
 	char* tbuffer = new char[size];
 	file.seekg(0, std::ios::beg);
 	file.read(tbuffer, size);
-	wholeFile->append(tbuffer, size);
+	wholeFile.append(tbuffer, size);
 	delete[] tbuffer;
-	if (wholeFile->find("DAT..") != 0)
+	if (wholeFile.find("DAT..") != 0)
 		return nullptr;	
-	return ParseFile(*wholeFile);
+	return ParseFile(wholeFile);
 }
 //Call to print data to file
 bool CreateLogFile(std::list<msg> lMessages, std::string* name) {
@@ -203,7 +155,6 @@ bool CreateLogFile(std::list<msg> lMessages, std::string* name) {
 
 std::wstring s2ws(const std::string& str)
 {
-
 	using convert_typeX = std::codecvt_utf8<wchar_t>;
 	std::wstring_convert<convert_typeX, wchar_t> converterX;
 	return converterX.from_bytes(str);
